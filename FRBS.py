@@ -7,6 +7,8 @@ from torchswarm.utils.parameters import SwarmParameters
 
 from enum import Enum
 
+from debug_utils import _vprint
+
 class DELTA(Enum):
     SAME = 0
     FAR = 1
@@ -54,7 +56,7 @@ class Frbs:
         print("Initialized Fuzzy Rule Based System")
     
     def get_delta_membership(self, delta):
-
+        # TODO: check why and how these values are outside of the predefined bounds. It is probably due to some wrong fromula
         def Same():
             if 0 <= delta < self.d1:
                 return 1 
@@ -63,7 +65,7 @@ class Frbs:
             elif self.d2 <= delta < self.delta_max :
                 return 0
             else:
-                raise ValueError
+                raise ValueError(f"delta={delta} is outside all membership intervals")
 
         def Near():
             if 0 <= delta < self.d1:
@@ -75,7 +77,7 @@ class Frbs:
             elif self.d3 <= delta < self.delta_max: 
                 return 0 
             else:
-                raise ValueError
+                raise ValueError(f"delta={delta} is outside all membership intervals")
 
         def Far():
             if 0 < delta < self.d2:
@@ -85,7 +87,8 @@ class Frbs:
             elif self.d3 <= delta <= self.delta_max: 
                 return 1
             else:
-                raise ValueError
+                raise ValueError(f"delta={delta} is outside all membership intervals")
+
 
         # membership = torch.Tensor[(Same(), Near(), Far())]
         self.delta_membership = {"Same":Same(), "Near":Near(), "Far": Far()}
@@ -127,7 +130,7 @@ class Frbs:
         # return the result from the class like this perhaps?
         # return PHI(res) 
 
-    def get_memberships(self, delta, phi):
+    def compute_memberships(self, delta, phi):
         self.get_phi_membership(phi)
         self.get_delta_membership(delta)
 
@@ -205,7 +208,7 @@ def main():
     test_phi = 0.3 # [-1, +1]
     delta_max = 50 
     test_FRBS = Frbs(delta_max)
-    memberships = test_FRBS.get_memberships(test_delta, test_phi)
+    memberships = test_FRBS.compute_memberships(test_delta, test_phi)
     print("memberships:", memberships) 
     print(memberships[1]["Worse"]) 
     test_FRBS.define_rules()

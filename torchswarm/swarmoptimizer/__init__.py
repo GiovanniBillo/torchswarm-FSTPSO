@@ -6,10 +6,11 @@ import math
 
 from torchswarm.particle.particle_factory import get_particle_instance
 from torchswarm.utils.parameters import SwarmParameters
-from FRBS import frbs
+from FRBS import Frbs
+from debug_utils import _vprint
 
 class SwarmOptimizer:
-    def __init__(self, dimensions, swarm_size, swarm_optimizer_type="standard", particle=None, **kwargs):
+    def __init__(self, dimensions, swarm_size, swarm_optimizer_type="standard", particle=None, verbose=True, **kwargs):
         self.swarm_size = swarm_size
         if not particle:
             self.particle = get_particle_instance(swarm_optimizer_type)
@@ -59,7 +60,7 @@ class SwarmOptimizer:
                 if self.gbest_value > best_fitness_candidate:
                     self.gbest_value = best_fitness_candidate
                     self.gbest_position = particle.position.clone()
-                    self.gbest_particle = copy.deepcopy(particle)
+                    self.gbest_particle = copy.deepcopy(particle) # TODO: not sure about the efficiency of this
             r1s = []
             r2s = []
             # --- For Each Particle Update Velocity
@@ -109,7 +110,7 @@ class FuzzySwarmOptimizer:
         self.dimensions = dimensions
 
         # extra stuff for fuzzy implementation
-        self.f_triangle = None # highest value of fitness at the first iteration
+        self.f_triangle = torch.tensor(torch.inf)# highest value of fitness at the first iteration
         self.delta_max = None # length of diagonal of hyperrectangle in search space
         print("Initialized FuzzySwarmOptimizer object.")
 
@@ -130,7 +131,7 @@ class FuzzySwarmOptimizer:
         self.delta_max = bounds[1]**2 * dimensions # according to formula: d = (l_1)^2 + ... (l_N)**2, generalized for a situation where all bounds, once set, are considered to be equal in each dimension
         print(f"Fuzzy Swarm Initialized for {function.__class__.__name__} with bounds:{bounds} and delta_max={self.delta_max}.") 
     
-    def calculate_delta(X_i, X_j):
+    def compute_delta(self, X_i, X_j):
         '''
             - considers the distance between two particles i and j
         '''
@@ -139,24 +140,46 @@ class FuzzySwarmOptimizer:
         #     diff = self.swarm[i] - self.swarm[j, ] 
         #     Delta[i, :] = torch.linalg.norm(diff)
 
-        diff = torch.sub(X_i - X_j)
+        diff = torch.sub(X_i.position, X_j.position)
         delta = torch.linalg.norm(diff)
 
-        assert torch.isreal(res), f"AssertionError: delta computation for {X_i}, {X_j} did not give back a real number."
+        assert torch.isreal(delta), f"AssertionError: delta computation for {X_i}, {X_j} did not give back a real number."
         return delta 
         
         print("Completed Delta computations.") 
 
-    def calculate_phi(X, X_prev):
-        '''
-            - considers the positions of one SINGLE particle at current and previous iterations 
-        '''
-        delta = self.compute_delta(X, X_prev) 
-        phi = (delta/self.delta_max)*torch.sub(torch.cmin(self.fitness_function(X), self.f_triangle, torch.cmin(self.fitness_function(X_prev), self.f_triangle)/torch.abs(self.f_triangle)))
-        assert 0 < phi < 1, f"AssertionError: phi should be in range 0 - 1, but is {phi}" 
+    def compute_phi(self, X, X_prev):
+        """
+        Considers the positions of one SINGLE particle
+        at current and previous iterations.
+        """
+        pos = X.position
+        pos_prev = X_prev.position
+
+        delta = self.compute_delta(X, X_prev)
+         
+        # Evaluate fitness
+        f_pos      = self.fitness_function.evaluate(pos)
+        f_prev_pos = self.fitness_function.evaluate(pos_prev)
+        ftri       = self.f_triangle
+        print("Shape of ftriangle:", ftri.shape)
+
+        # Compute the min terms
+        min_curr = torch.min(f_pos, ftri)
+        min_prev = torch.min(f_prev_pos, ftri) / torch.abs(ftri)
+
+        # Final phi expression
+        phi = (delta / self.delta_max) * (min_curr - min_prev)
+
+        # phi is a tensor → convert to python float for comparison
+        phi_scalar = phi.item()
+
+        assert -1 < phi_scalar < 1, f"AssertionError: phi should be in range 0 - 1, but is {phi_scalar}"
+
         return phi
 
-    def get_params(X, X_prev):
+
+    def get_params(self, X, X_prev):
         delta = self.compute_delta(X, X_prev) 
         phi = self.compute_phi(X, X_prev) 
         
@@ -181,13 +204,13 @@ class FuzzySwarmOptimizer:
                 fitness_candidate = self.fitness_function.evaluate(particle.position)
                 if (particle.pbest_value > fitness_candidate):
                     particle.pbest_value = fitness_candidate
-                    particle.pbest_position_old = particle.pbest_position.copy() 
+                    particle.pbest_position_old = particle.pbest_position.clone()# TODO: copying all these vectors in probably not very efficient: how to do it best?
                     particle.pbest_position = particle.position.clone()
             # --- Set GBest
             for particle in self.swarm:
                 best_fitness_candidate = self.fitness_function.evaluate(particle.position)
                 if self.gbest_value > best_fitness_candidate:
-                    self.gbest_position_old = self.gbest_position.copy() # saving the value which will be needed in update_velocity  
+                    self.gbest_position_old = self.gbest_position.clone() # saving the value which will be needed in update_velocity  
                     self.gbest_value = best_fitness_candidate
                     self.gbest_position = particle.position.clone()
                     self.gbest_particle = copy.deepcopy(particle)
@@ -208,9 +231,22 @@ class FuzzySwarmOptimizer:
             # --- For Each Particle update hyperparameters autonomously
             for p in range(self.swarm_size):
                 print("The delta and phi update should take place here!!")
-                delta, phi= get_params(self.swarm[p], self.swarm_old[p])
-                frbs.get_delta_membership(delta) 
-                frbs.get_phi_membership(phi) 
+                delta, phi= self.get_params(self.swarm[p], self.swarm_old[p])
+                # frbs.get_delta_membership(delta) 
+                # frbs.get_phi_membership(phi) 
+
+                memberships = frbs.compute_memberships(delta, phi)
+                _vprint(verbose, f"computed membership for particle {p}:{memberships}") 
+                frbs.define_rules()
+                new_params = frbs.sugeno()
+
+                p.w[iteration] = new_params["Inertia"]
+                p.c1[iteration] = new_params["Social"]
+                p.c2[iteration] = new_params["Cognitive"]
+                p.L[iteration] = new_params["L"]
+                p.U[iteration] = new_params["U"]
+
+                _vprint(verbose, f"Successfully updated parameters for particle {p}:{p}") 
             if verbosity == True:
                 print('Iteration {:.0f} >> global best fitness {:.3f}  | iteration time {:.3f}'.format(iteration + 1, self.gbest_value.item(), toc - tic))
 
