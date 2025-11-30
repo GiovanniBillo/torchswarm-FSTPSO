@@ -3,7 +3,7 @@ import numpy as np
 
 from torchswarm.utils.rotation_utils import get_rotation_matrix, get_inverse_matrix, get_phi_matrix
 from torchswarm.utils.parameters import SwarmParameters
-
+from FRBS import Frbs
 
 class Particle:
     def __init__(self, dimensions, w=0.5, c1=2, c2=2, **kwargs):
@@ -111,3 +111,63 @@ class RotatedEWMParticle(ExponentiallyWeightedMomentumParticle):
         swarm_parameters.r1 = r1
         swarm_parameters.r2 = r2
         return swarm_parameters
+
+class FuzzyParticle(Particle):
+        # maybe initialize like this?
+        # super(RotatedParticle, self).__init__(dimensions, w, c1, c2, **kwargs)
+
+    def __init__(self, dimensions, max_iterations, w=0.5, c1=2, c2=2, **kwargs):
+
+        self.dimensions = dimensions
+
+        self.w = torch.full((max_iterations,), w)
+        self.c1 = torch.full((max_iterations,), c1) 
+        self.c2 = torch.full((max_iterations,), c2)
+
+        classes = kwargs.get("classes") if kwargs.get("classes") else 1
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = kwargs.get("device") if kwargs.get("device") else self.device
+        if kwargs.get("bounds"):
+            self.bounds = kwargs.get("bounds")
+            self.position = (self.bounds[0] - self.bounds[1]) * torch.rand(dimensions, classes).to(self.device) + self.bounds[1]
+        else:
+            self.bounds = None
+            self.position = torch.rand(dimensions, classes).to(self.device)
+        self.position_old =  torch.rand(dimensions, classes).to(self.device)
+        self.velocity = torch.zeros((dimensions, classes)).to(self.device)
+        self.velocity_old = torch.zeros((dimensions, classes)).to(self.device)
+        self.pbest_position = self.position
+        self.pbest_position_old = None 
+        self.pbest_value = torch.Tensor([float("inf")]).to(self.device)
+        print("!!! INITIALIZING NOT YET IMPLEMENTED FUZZYPARTICLE!!!")
+
+    def update_velocity(self, gbest_position_old):
+        r1 = torch.rand(1).to(self.device)
+        r2 = torch.rand(1).to(self.device)
+        it = 1
+        for i in range(0, self.dimensions):
+            self.velocity_old[i] = self.velocity[i]
+            # self.velocity[i] = self.w * self.velocity[i] \
+            #                    + self.c1 * r1 * (self.pbest_position[i] - self.position[i]) \
+            #                    + self.c2 * r2 * (gbest_position[i] - self.position[i])
+            # using equation (5) in the paper, which apparently takes everything from one step BEFORE the current one
+            self.velocity[i] = self.w[it] * self.velocity[i] \
+                               + self.c1[it] * r1 * (self.pbest_position_old[i] - self.position_old[i]) \
+                               + self.c2[it] * r2 * (gbest_position_old[i] - self.position[i])
+
+
+        swarm_parameters = SwarmParameters()
+        swarm_parameters.r1 = r1
+        swarm_parameters.r2 = r2
+
+        print("!!! UPDATING VELOCITY ON NOT YET IMPLEMENTED FUZZYPARTICLE!!!")
+        return swarm_parameters
+
+    def move(self):
+        for i in range(0, self.dimensions):
+            self.position_old[i] - self.position[i]
+            self.position[i] = self.position[i] + self.velocity[i]
+        if self.bounds:
+            self.position = torch.clamp(self.position, self.bounds[0], self.bounds[1])
+
+        print("!!! MOVING NOT YET IMPLEMENTED FUZZYPARTICLE!!!")
