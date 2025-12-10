@@ -1,0 +1,225 @@
+import time
+
+import torch
+import copy
+import numpy as np
+from torchswarm.utils.parameters import SwarmParameters
+
+from enum import Enum
+
+from debug_utils import _vprint
+
+class DELTA(Enum):
+    SAME = 0
+    FAR = 1
+    NEAR = 2
+
+class PHI(Enum):
+    BETTER = 0
+    SAME = 1
+    WORSE = 2
+
+class OUT(Enum):
+    LOW = 0
+    MEDIUM = 1
+    HIGH= 2
+
+# Defuzzification values
+class Frbs:
+    def __init__(self, delta_max):
+        '''
+        - Fuzzy rule-based system 
+        (which should probably be defined somewhere else, outside of this class, but whatever, !!TODO!!)
+        '''
+        self.delta_max = delta_max
+        self.d1 = 0.2*delta_max 
+        self.d2 = 0.4*delta_max 
+        self.d3 = 0.6*delta_max
+        
+        self.z = torch.Tensor([[0.3, 0.5, 1.0], [1.0, 2.0, 3.0], [0.1, 1.5, 3.0], [0.0, 0.001, 0.01], [0.1, 0.15, 0.2]]) # defuzzification values
+        self.rules = None
+
+        self.components = ["Inertia", "Social", "Cognitive", "L", "U"]
+
+        z_tensor = torch.Tensor([
+            [0.3,   0.5,   1.0],   # Inertia
+            [1.0,   2.0,   3.0],   # Social
+            [0.1,   1.5,   3.0],   # Cognitive
+            [0.0,   0.001, 0.01],  # L
+            [0.1,   0.15,  0.2]    # U
+        ])
+
+        self.z_dict = {name: z_tensor[i].numpy() for i, name in enumerate(self.components)}
+        self.phi_membership = None
+        self.delta_membership = None
+
+        print("Initialized Fuzzy Rule Based System")
+    
+    def get_delta_membership(self, delta):
+        assert delta < self.delta_max,f"assertionError: delta={delta} is larger than delta_max={delta_max}"
+        # TODO: check why and how these values are outside of the predefined bounds. It is probably due to some wrong formula 
+        def Same():
+            if 0 <= delta < self.d1:
+                return torch.tensor([1]) 
+            elif self.d1 <= delta < self.d2:
+                return (self.d2 - delta)/(self.d2 - self.d1)
+            elif self.d2 <= delta < self.delta_max :
+                return torch.tensor([0])
+            else:
+                _vprint(self.verbose, f"delta={delta} is outside all membership intervals")
+                raise ValueError(f"delta={delta} is outside all membership intervals")
+
+        def Near():
+            if 0 <= delta < self.d1:
+                return torch.tensor([0])
+            elif self.d1 <= delta < self.d2:
+                return torch(delta - self.d1)/(self.d2 - self.d1)
+            elif self.d2 <= delta < self.d3:
+                return (self.d3 - delta)/(self.d3 - self.d2) 
+            elif self.d3 <= delta <= self.delta_max: 
+                return torch.tensor([0])
+            else:
+                _vprint(self.verbose, f"delta={delta} is outside all membership intervals")
+                raise ValueError(f"delta={delta} is outside all membership intervals")
+
+        def Far():
+            if 0 <= delta < self.d2:
+                return 0 
+            elif self.d2 <= delta < self.d3:
+                return (delta - self.d2)/(self.d3 - self.d2)
+            elif self.d3 <= delta <= self.delta_max: 
+                return 1
+            else:
+                _vprint(self.verbose, f"delta={delta} is outside all membership intervals")
+                raise ValueError
+
+
+        # membership = torch.Tensor[(Same(), Near(), Far())]
+        self.delta_membership = {"Same":Same(), "Near":Near(), "Far": Far()}
+
+
+
+    def get_phi_membership(self, phi):
+        '''
+        - Encode the rules for getting phi  
+        '''
+        def Same():
+            return 1 - np.abs(phi)
+
+        def Worse():
+            if (-1 <= phi < 0):
+                return 0 
+            elif (0 <= phi< 1):
+                return phi 
+            elif phi == 1:
+                return 1
+            else:
+                raise ValueError
+
+        def Better():
+            if (phi == -1):
+                return 1 
+            elif (-1 < phi < 0):
+                return -phi 
+            elif 0 <= phi <= 1:
+                return 0
+            else:
+                raise ValueError
+
+        # membership = torch.Tensor[(Same(), Worse(), Better())]
+        self.phi_membership = {"Same":Same(), "Worse":Worse(), "Better": Better()}
+        # assert (-1 < np.asarray(membership.values()) < 1).all, f"AssertionError: Phi should have values [-1, +1], but current membership is {membership}"
+
+
+        # return the result from the class like this perhaps?
+        # return PHI(res) 
+
+    def compute_memberships(self, delta, phi):
+        self.get_phi_membership(phi)
+        self.get_delta_membership(delta)
+
+        return self.delta_membership, self.phi_membership
+
+    def define_rules(self):
+        # phi = memberships["phi"]
+        # delta = memberships["delta"]
+        delta = self.delta_membership
+        phi = self.phi_membership
+
+        self.rules = {
+            "Inertia": torch.Tensor([
+                torch.maximum(phi["Worse"], delta["Same"]),   # Rule 1: Low
+                torch.maximum(phi["Same"], delta["Near"]),    # Rule 2: Medium
+                torch.maximum(phi["Better"], delta["Far"])    # Rule 3: High
+            ]),
+
+            "Social": torch.Tensor([
+                torch.maximum(phi["Better"], delta["Near"]),  # Rule 4: Low
+                torch.maximum(phi["Same"], delta["Same"]),    # Rule 5: Medium
+                torch.maximum(phi["Worse"], delta["Far"])     # Rule 6: High
+            ]),
+
+            "Cognitive": torch.Tensor([
+                delta["Far"],                             # Rule 7: Low
+                torch.maximum(phi["Worse"], phi["Same"],
+                       delta["Same"], delta["Near"]),    # Rule 8: Medium
+                phi["Better"]                             # Rule 9: High
+            ]),
+
+            "L": torch.Tensor([                               # L (whatever variable stands for)
+                torch.maximum(phi["Same"], phi["Better"], delta["Far"]),  # Rule 10: Low
+                torch.maximum(delta["Same"], delta["Near"]),               # Rule 11: Medium
+                phi["Worse"]                                          # Rule 12: High
+            ]),
+
+            "U": torch.Tensor([                               # U (another output variable)
+                delta["Same"],                            # Rule 13: Low
+                torch.maximum(phi["Same"], phi["Better"], delta["Near"]),  # Rule 14: Medium
+                torch.maximum(phi["Worse"], delta["Far"])      # Rule 15: High
+            ])
+        }
+
+    def sugeno(self):
+        OUT = {name: 0 for i, name in enumerate(self.components)}
+
+        for c in self.components:  
+            for i, r in enumerate(self.rules[c]):
+                print(f'ruleset r for c ',r,c)
+                OUT[c] += r*self.z_dict[c][i]
+            denum = torch.sum(self.rules[c], axis=0)
+            OUT[c] /= denum
+
+        return OUT 
+    def get_stuff(self):
+        
+        # Rules for Inertia
+        Inertia = None
+        # Rules for Social
+        Soc = None
+        # Rules for Cognitive
+        Cog = None
+        # Rules for L
+        L = None
+        # Rules for U
+        U = None
+
+        assert L < U, f"AssertionError: L should be smaller than U, but L={L}!< U={U}"
+
+        return Inertia, Social, Cognitive, L,         
+def main():
+    # test for the Fuzzy Rule Based System and Sugeno Method
+    test_delta =  25# any real number
+    test_phi = 0.3 # [-1, +1]
+    delta_max = 50 
+    test_FRBS = Frbs(delta_max)
+    memberships = test_FRBS.compute_memberships(test_delta, test_phi)
+    print("memberships:", memberships) 
+    print(memberships[1]["Worse"]) 
+    test_FRBS.define_rules()
+    print(test_FRBS.rules)
+    out = test_FRBS.sugeno()
+    print("Output of sugeno method:", out)
+    return 0
+
+if __name__=='__main__':
+    main()

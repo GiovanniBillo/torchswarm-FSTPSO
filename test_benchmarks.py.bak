@@ -1,0 +1,109 @@
+# # Integration Test
+# import torch
+
+# from torchswarm.swarmoptimizer import SwarmOptimizer
+# from torchswarm.functions.benchmarks import Ackley, Sphere
+
+
+# empso = SwarmOptimizer(2, 100, swarm_optimizer_type="standard", max_iterations=10)
+# empso.optimize(Ackley())
+
+# print("results for the Ackley run:")
+# print(empso.run(verbosity=True).__dict__)
+# ---------------------------------------------------------
+# Integration Test for All Benchmark Functions
+# ---------------------------------------------------------
+
+import torch
+print("Torch version:", torch.__version__)
+print("Built with CUDA:", torch.version.cuda)
+from torchswarm.swarmoptimizer import SwarmOptimizer, FuzzySwarmOptimizer
+from torchswarm.functions.benchmarks import (
+    Ackley,
+    Sphere,
+    Rastrigin,
+    Eggholder,
+    Alpine,
+    Bohachevsky,
+    Griewank,
+    Michalewicz,
+    Plateau,
+    Quintic,
+    Rosenbrock,
+    Shubert,
+    Vincent,
+    XinSheYang,
+)
+
+# ---------------------------------------------------------
+# Helper: run a test using appropriate dimension for each function
+# ---------------------------------------------------------
+def run_test(func_class, dim, name=None):
+    if name is None:
+        name = func_class.__name__
+
+    print('='*80)
+    print("STANDARD PSO")
+    print('='*80)
+
+    print("\n" + "=" * 50)
+    print(f"Testing function: {name}   (dim = {dim})")
+    print("=" * 50)
+
+    opt = SwarmOptimizer(
+        dim,
+        100,
+        swarm_optimizer_type="standard",
+        max_iterations=100,
+    )
+
+    
+    opt.optimize(func_class())
+    swarm_parameters = opt.run(verbosity=False)
+
+    print(f"Best fitness value found for {name}: {swarm_parameters.gbest_value}")
+    print(f"Best position: {swarm_parameters.gbest_position}\n")
+
+    print('='*80)
+    print("FUZZY-SELF TUNING PSO")
+    print('='*80)
+
+    fuzzy_opt = FuzzySwarmOptimizer(
+        dim,
+        swarm_optimizer_type="fuzzy",
+        max_iterations=100,
+    )
+    fuzzy_opt.optimize(func_class())
+    fuzzy_swarm_parameters = fuzzy_opt.run(verbosity=False)
+
+    print(f"Best fuzzy fitness value found for {name}: {fuzzy_swarm_parameters.gbest_value}")
+    print(f"Best fuzzy position: {fuzzy_swarm_parameters.gbest_position}\n")
+
+
+# ---------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------
+if __name__ == "__main__":
+
+    # Functions supporting ANY M
+    run_test(Ackley, dim=5)
+    run_test(Sphere, dim=5)
+    run_test(Rastrigin, dim=5)
+    run_test(Alpine, dim=5)
+    run_test(Bohachevsky, dim=5)   # typical M > 1
+    run_test(Griewank, dim=5)
+    run_test(Michalewicz, dim=5)
+    run_test(Plateau, dim=5)
+    run_test(Quintic, dim=5)
+    run_test(Rosenbrock, dim=5)
+    run_test(Vincent, dim=5)
+    run_test(XinSheYang, dim=5)
+
+    # Functions with constraints or special definitions
+
+    # Eggholder: defined only for 2D
+    run_test(Eggholder, dim=2)
+
+    # Shubert: works in M-D but is notoriously unstable in high dims
+    # run_test(Shubert, dim=2)
+

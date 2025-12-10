@@ -1,3 +1,4 @@
+
 import argparse
 import torch
 import os
@@ -7,32 +8,47 @@ import csv
 print("Torch version:", torch.__version__)
 print("Built with CUDA:", torch.version.cuda)
 
-from torchswarm.swarmoptimizer.SO import SwarmOptimizer
-from torchswarm.swarmoptimizer.FSO import FuzzySwarmOptimizer
-
-from torchswarm.functions.benchmarks import (
-    Ackley,
-    Sphere,
-    Rastrigin,
-    Eggholder,
-    Alpine,
-    Bohachevsky,
-    Griewank,
-    Michalewicz,
-    Plateau,
-    Quintic,
-    Rosenbrock,
-    Shubert,
-    Vincent,
-    XinSheYang,
-)
+from torchswarm.swarmoptimizer import SwarmOptimizer, FuzzySwarmOptimizer
+from torchswarm.functions.benchmarks import LotkaVolterra
 
 from consts import TRUE_OPTIMA
-from cli import get_args
 
 from debug_utils import save_csv, build_master_table # not really debug utils but whatever
 
-args = get_args()
+# ---------------------------------------------------------
+# Command-line arguments
+# ---------------------------------------------------------
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    "-v", "--verbose",
+    action="store_true",
+    help="enable verbose output for PSO runs"
+)
+
+parser.add_argument(
+    "--model",
+    choices=["std", "fuzzy"],
+    default="std",
+    help="Select which PSO variant to run"
+)
+
+parser.add_argument(
+    "--nruns",
+    type=int,
+    default=1,
+    help="Number of runs to perform for each benchmark function"
+)
+
+parser.add_argument(
+    "--niter",
+    type=int,
+    default=400,
+    help="Number of iterations per run"
+)
+
+args = parser.parse_args()
+
 VERBOSE = args.verbose
 MODEL = args.model
 NRUNS = args.nruns
@@ -61,14 +77,12 @@ def log(msg):
 # Run experiment
 # ---------------------------------------------------------
 
-def run_test(func_class, dim, name=None, filename="master_table.csv", args=args):
+def run_test(func_class, dim, name=None, filename="master_table.csv"):
     if name is None:
         name = func_class.__name__
 
     header = f"{'='*80}\nTesting function: {name} (dim={dim}) using model={MODEL}\n{'='*80}"
-    args = f"{'='*80}\nARGS == {args}:\n{'='*80}"
     log(header)
-    log(args)
 
     ABF = 0 
     for run in range(1, NRUNS + 1):
@@ -79,6 +93,7 @@ def run_test(func_class, dim, name=None, filename="master_table.csv", args=args)
             opt = SwarmOptimizer(
                 dim,
                 swarm_size=100,
+                n_particles=100,
                 swarm_optimizer_type="standard",
                 max_iterations=NITER,
                 verbose=VERBOSE,
@@ -124,20 +139,5 @@ def run_test(func_class, dim, name=None, filename="master_table.csv", args=args)
 if __name__ == "__main__":
 
     # Functions supporting ANY dimension
-    run_test(Ackley, dim=5)
-    # run_test(Sphere, dim=5)
-    # run_test(Rastrigin, dim=5)
-    # run_test(Alpine, dim=5)
-    # run_test(Griewank, dim=5)
-    # run_test(Michalewicz, dim=5)
-    # run_test(Plateau, dim=5)
-    # run_test(Quintic, dim=5)
-    # run_test(Rosenbrock, dim=5)
-    # run_test(Vincent, dim=5)
-    # run_test(XinSheYang, dim=5)
-
-    # Constraints / special cases
-    # run_test(Bohachevsky, dim=2)
-    # run_test(Eggholder, dim=2)
-    # run_test(Shubert, dim=2)
+    run_test(LotkaVolterra, dim=5)
 

@@ -1,21 +1,8 @@
 import torch
 import math
-BOUNDS = {
-    "Ackley":       (-30, 30),
-    "Sphere":      (-5.12, 5.12),
-    "Alpine":       (-10, 10),
-    "Bohachevsky":  (-15, 15),
-    "Griewank":     (-600, 600),
-    "Michalewicz":  (0, math.pi),
-    "Plateau":      (-5.12, 5.12),
-    "Quintic":      (-10, 10),
-    "Rastrigin":    (-5.12, 5.12),
-    "Rosenbrock":   (-5, 10),
-    "Shubert":      (-10, 10),
-    "Vincent":      (0.25, 10),
-    "XinSheYang":   (-2*math.pi, 2*math.pi),
-    "Eggholder":      (-5.12, 5.12),
-}
+from debug_utils import _vprint
+from consts import BOUNDS, PROBLEM_BOUNDS
+from scipy.integrate import odeint
 
 class Function:
     def __init__(self):
@@ -31,16 +18,61 @@ def _ensure_2d(pos):
         pos = pos.unsqueeze(0)
     return pos
 
+def Reflectance(Function):
+    def __init__(self):
+        self.bounds = PROBLEM_BOUNDS[self.__class__.__name__]
+    def evaluate(self, pos):
+        
+        gt = "Something you retrieve from the dataset itself" # i.e idk, initialize a particle swarm of the same size of the observations that were taken everyday and then compare them in order 
+        g_0 = 0.089
+        g_1 = 0.1245
 
+        bbp = pos[0]
+        atot = pos[1]
+        first = g_0*(bbp/(bbp + atot)) 
+        second = g_1*(bbp/(bbp + atot))**2
+        pred = first + second 
+
+        out = pred - gt 
+        return out.squeeze()
+
+## Good reference for typical benchmark optimization functions: https://www.sfu.ca/~ssurjano/ackley.html or whatever function one might need
 # ---------------------------------------------------------
 #  ACKLEY
 # ---------------------------------------------------------
+def lotka_volterra(state, t, params):
+    r = params[0][0]
+    a = params[0][1]
+    b = params[1][0]
+    z = params[1][1]
+
+    X = state[0]
+    Y = state[1]
+
+    dxdt = r*X - a*X*Y
+    dydt = b*X*Y - z*Y
+
+    return [dxdt, dydt]
+
+class LotkaVolterra(Function):
+    def __init__(self, target_traj):
+        self.target_traj = target_traj
+    def eval(self, individual):
+        t = np.linspace(0, 100, 100)
+        initial_conditions=self.target_traj[0]
+        sol = odeint(lotka_volterra, initial_conditions, t, args=(individual,))
+        return np.mean((sol - self.target_traj) ** 2)
 
 class Ackley(Function):
     def __init__(self):
         self.bounds = BOUNDS[self.__class__.__name__]
     def evaluate(self, pos):
-        M = pos.shape[1]
+        # print("SHAPE OF POS AT INPUT:", pos.shape)
+        M = pos.shape[0] # this was [1]. wrong! this way only 1 dimension is considered
+        # print("selected shape:", M)
+        # print("original:", pos)
+        # print("differences in sum wrt dimensions (dim=1):", torch.sum(pos**2, dim=1))
+        # print("differences in sum wrt dimensions (dim=0)):", torch.sum(pos**2, dim=0))
 
         term1 = torch.sqrt(torch.sum(pos**2) / M)
         term2 = torch.sum(torch.cos(2 * torch.pi * pos)) / M
@@ -57,6 +89,10 @@ class Sphere(Function):
         self.bounds = BOUNDS[self.__class__.__name__]
     def evaluate(self, pos):
         pos = _ensure_2d(pos)
+
+        # print("original:", pos)
+        # print("differences in sum wrt dimensions (dim=1):", torch.sum(pos, dim=1))
+        # print("differences in sum wrt dimensions (dim=0)):", torch.sum(pos, dim=0))
         return torch.sum(pos**2)
 
 
@@ -68,7 +104,13 @@ class Rastrigin(Function):
         self.bounds = BOUNDS[self.__class__.__name__]
     def evaluate(self, pos):
         pos = _ensure_2d(pos)
-        M = pos.shape[1]
+        M = pos.shape[0]
+
+        # print("selected shape:", M)
+        # print("original:", pos)
+        # print("differences in sum wrt dimensions (dim=1):", torch.sum(pos, dim=1))
+        # print("differences in sum wrt dimensions (dim=0)):", torch.sum(pos, dim=0))
+
         return 10 * M + torch.sum(pos**2 - 10 * torch.cos(2 * torch.pi * pos))
 
 
@@ -81,8 +123,8 @@ class Eggholder(Function):
     def evaluate(self, pos):
         pos = _ensure_2d(pos)
         # defined only for 2D
-        x = pos[0]
-        y = pos[1]
+        x = pos[0,0]
+        y = pos[1,0]
         term1 = -(y + 47) * torch.sin(torch.sqrt(torch.abs(x / 2 + (y + 47))))
         term2 = -x * torch.sin(torch.sqrt(torch.abs(x - (y + 47))))
         return term1 + term2
@@ -107,15 +149,21 @@ class Bohachevsky(Function):
         self.bounds = BOUNDS[self.__class__.__name__]
     def evaluate(self, pos):
         pos = _ensure_2d(pos)
-        x = pos[:, :-1]
-        y = pos[:, 1:]
+        assert pos.shape[0] == 2, f"AssertionError: Bohachevsky function got input with > 2 dimensions."
+        # x = pos[:, :-1]
+        # y = pos[:, 1:]
 
-        return torch.sum(
-            x**2 + 2 * y**2
-            - 0.3 * torch.cos(3 * torch.pi * x)
-            - 0.4 * torch.cos(4 * torch.pi * y)
-            + 0.7
-        )
+        # return torch.sum(
+        #     x**2 + 2 * y**2
+        #     - 0.3 * torch.cos(3 * torch.pi * x)
+        #     - 0.4 * torch.cos(4 * torch.pi * y)
+        #     + 0.7
+        # )
+        x = pos[0]
+        y = pos[1]
+
+        return x**2 + 2*y**2 - 0.3 * torch.cos(3 * torch.pi * x) \
+               - 0.4 * torch.cos(4 * torch.pi * y) + 0.7
 
 
 # ---------------------------------------------------------
@@ -127,10 +175,10 @@ class Griewank(Function):
         self.bounds = BOUNDS[self.__class__.__name__]
     def evaluate(self, pos):
         pos = _ensure_2d(pos)
-        M = pos.shape[1]
+        M = pos.shape[0]
 
         sum_term = torch.sum(pos**2) / 4000
-        i = torch.arange(1, M + 1, device=pos.device).float()
+        i = torch.arange(1, M+1, device=pos.device).float().unsqueeze(1)   # (M,1)
         prod_term = torch.prod(torch.cos(pos / torch.sqrt(i)))
 
         return sum_term - prod_term + 1
@@ -147,9 +195,9 @@ class Michalewicz(Function):
 
     def evaluate(self, pos):
         pos = _ensure_2d(pos)
-        M = pos.shape[1]
+        M = pos.shape[0]
 
-        i = torch.arange(1, M + 1, device=pos.device).float()
+        i = torch.arange(1, M + 1, device=pos.device).float().unsqueeze(1)
         return -torch.sum(
             torch.sin(pos) * torch.pow(torch.sin(i * pos**2 / math.pi), 2 * self.k)
         )
@@ -158,13 +206,22 @@ class Michalewicz(Function):
 # ---------------------------------------------------------
 #  PLATEAU
 # ---------------------------------------------------------
-class Plateau(Function):
+## version in the paper, which however is wrong/too easy to optimize
+# class Plateau(Function):
 
+#     def __init__(self):
+#         self.bounds = BOUNDS[self.__class__.__name__]
+#     def evaluate(self, pos):
+#         pos = _ensure_2d(pos)
+#         return 30 + torch.sum(torch.floor(pos))
+
+class Plateau(Function):
     def __init__(self):
         self.bounds = BOUNDS[self.__class__.__name__]
+
     def evaluate(self, pos):
         pos = _ensure_2d(pos)
-        return 30 + torch.sum(torch.floor(pos))
+        return torch.sum(torch.floor(pos + 0.5)**2)
 
 
 # ---------------------------------------------------------
@@ -186,16 +243,22 @@ class Quintic(Function):
 #  ROSENBROCK
 # ---------------------------------------------------------
 class Rosenbrock(Function):
-
     def __init__(self):
         self.bounds = BOUNDS[self.__class__.__name__]
+
     def evaluate(self, pos):
-        pos = _ensure_2d(pos)
-        x = pos[:, :-1]
-        y = pos[:, 1:]
+        pos = _ensure_2d(pos)  # shape (batch, D)
+        # x = pos
 
-        return torch.sum(100 * (y - x**2)**2 + (x - 1)**2)
+        # Compute term-by-term: dimension d interacts only with d+1
+        # return torch.sum(
+        #     100 * (x[:, 1:] - x[:, :-1]**2)**2 +
+        #     (1 - x[:, :-1])**2,
+        #     dim=1
+        # )
+        x = pos[:,0]  # (M,)
 
+        return torch.sum(100*(x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
 
 # ---------------------------------------------------------
 #  SHUBERT
@@ -206,7 +269,7 @@ class Shubert(Function):
         self.bounds = BOUNDS[self.__class__.__name__]
     def evaluate(self, pos):
         pos = _ensure_2d(pos)
-        M = pos.shape[1]
+        M = pos.shape[0]
         results = torch.ones(pos.shape[0], device=pos.device)
 
         for m in range(M):

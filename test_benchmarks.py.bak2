@@ -1,0 +1,107 @@
+import argparse
+import torch
+
+print("Torch version:", torch.__version__)
+print("Built with CUDA:", torch.version.cuda)
+
+from torchswarm.swarmoptimizer import SwarmOptimizer, FuzzySwarmOptimizer
+from torchswarm.functions.benchmarks import (
+    Ackley,
+    Sphere,
+    Rastrigin,
+    Eggholder,
+    Alpine,
+    Bohachevsky,
+    Griewank,
+    Michalewicz,
+    Plateau,
+    Quintic,
+    Rosenbrock,
+    Shubert,
+    Vincent,
+    XinSheYang,
+)
+
+# ---------------------------------------------------------
+# Command-line arguments
+# ---------------------------------------------------------
+parser = argparse.ArgumentParser()
+
+parser.add_argument(
+    "-v", "--verbose",
+    action="store_true",
+    help="enable verbose output for PSO runs"
+)
+
+args = parser.parse_args()
+VERBOSE = args.verbose     # boolean
+
+
+# ---------------------------------------------------------
+# Helper: run a test using appropriate dimension for each function
+# ---------------------------------------------------------
+def run_test(func_class, dim, name=None):
+    if name is None:
+        name = func_class.__name__
+
+    print('='*80)
+    print("STANDARD PSO")
+    print('='*80)
+
+    print("\n" + "=" * 50)
+    print(f"Testing function: {name}   (dim = {dim})")
+    print("=" * 50)
+
+    opt = SwarmOptimizer(
+        dim,
+        100,
+        swarm_optimizer_type="standard",
+        max_iterations=400,
+        verbose=VERBOSE
+    )
+
+    opt.optimize(func_class())
+    swarm_parameters = opt.run(verbosity=VERBOSE)
+
+    print(f"Best fitness value found for {name}: {swarm_parameters.gbest_value}")
+    print(f"Best position: {swarm_parameters.gbest_position}\n")
+
+    # print('='*80)
+    # print("FUZZY-SELF TUNING PSO")
+    # print('='*80)
+
+    # fuzzy_opt = FuzzySwarmOptimizer(
+    #     dim,
+    #     swarm_optimizer_type="fuzzy",
+    #     max_iterations=400,
+    # )
+    # fuzzy_opt.optimize(func_class())
+    # fuzzy_swarm_parameters = fuzzy_opt.run(verbosity=VERBOSE)
+
+    # print(f"Best fuzzy fitness value found for {name}: {fuzzy_swarm_parameters.gbest_value}")
+    # print(f"Best fuzzy position: {fuzzy_swarm_parameters.gbest_position}\n")
+
+
+# ---------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------
+if __name__ == "__main__":
+
+    # Functions supporting ANY dimension
+    run_test(Ackley, dim=5)
+    run_test(Sphere, dim=5)
+    run_test(Rastrigin, dim=5)
+    run_test(Alpine, dim=5)
+    run_test(Bohachevsky, dim=5)
+    run_test(Griewank, dim=5)
+    run_test(Michalewicz, dim=5)
+    run_test(Plateau, dim=5)
+    run_test(Quintic, dim=5)
+    run_test(Rosenbrock, dim=5)
+    run_test(Vincent, dim=5)
+    run_test(XinSheYang, dim=5)
+
+    # Constraints / special cases
+    run_test(Eggholder, dim=2)
+    # run_test(Shubert, dim=2)
+

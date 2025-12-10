@@ -1,5 +1,5 @@
-from torchswarm.particle import Particle, RotatedParticle, ExponentiallyWeightedMomentumParticle, RotatedEWMParticle, FuzzyParticle
-
+from torchswarm.particle.P import Particle, RotatedParticle, ExponentiallyWeightedMomentumParticle, RotatedEWMParticle 
+from torchswarm.particle.FP import FuzzyParticle
 
 def get_particle_instance(swarm_optimizer_type):
     if swarm_optimizer_type == "standard":
