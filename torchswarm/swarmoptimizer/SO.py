@@ -20,21 +20,23 @@ class SwarmOptimizer:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         device = kwargs.get("device") if kwargs.get("device") else device
         self.swarm = []
-
+        # A sol_shape parameter would probably be more coincise than dimensions and classes
 
         # for i in range(self.swarm_size):
         #     self.swarm.append(self.particle(dimensions, **kwargs))
 
         self.dimensions = dimensions
+        self.classes = kwargs.get("classes") if kwargs.get("classes") else 1
         self.verbose=verbose
 
     def optimize(self, function):
         dimensions = self.dimensions
+        classes = self.classes
         bounds = function.bounds
         self.fitness_function = function
         print("Initializing particle swarm...") 
         for i in range(self.swarm_size):
-                    self.swarm.append(self.particle(dimensions=dimensions, bounds=bounds, function=function))
+                    self.swarm.append(self.particle(dimensions=dimensions, bounds=bounds, function=function, classes=classes))
 
         self.gbest_particle = None
         self.gbest_position = min((p.pbest_position for p in self.swarm), key=self.fitness_function.evaluate) 

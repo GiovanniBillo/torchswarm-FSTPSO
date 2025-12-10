@@ -70,7 +70,7 @@ class LotkaVolterra(Function):
             return 1e12
 
         mse = np.mean((sol - self.ground_truth) ** 2)
-        log.debug(f" -> {self.name} MSE = {mse}")
+        print(f" -> {self.name} MSE = {mse}")
         return mse
 
 class Reflectance(Function):

@@ -48,7 +48,7 @@ def log(msg):
 # Run experiment
 # ---------------------------------------------------------
 
-def run_test(func_class, dim, name=None, filename="master_table.csv", **kwargs):
+def run_test(func_class, dim, classes=1, name=None, filename="master_table.csv", **kwargs):
     if name is None:
         name = func_class.__name__
 
@@ -66,8 +66,7 @@ def run_test(func_class, dim, name=None, filename="master_table.csv", **kwargs):
                 swarm_size=100,
                 swarm_optimizer_type="standard",
                 max_iterations=NITER,
-                verbose=VERBOSE,
-            )
+                verbose=VERBOSE, classes=classes)
         elif MODEL == "fuzzy": 
             opt = FuzzySwarmOptimizer(
                 dim,
@@ -109,6 +108,6 @@ def run_test(func_class, dim, name=None, filename="master_table.csv", **kwargs):
 if __name__ == "__main__":
 
     # Functions supporting ANY dimension
-    run_test(LotkaVolterra, dim=2)
+    run_test(LotkaVolterra, dim=2, classes=2)
     # run_test(LotkaVolterra, dim=4)
 
