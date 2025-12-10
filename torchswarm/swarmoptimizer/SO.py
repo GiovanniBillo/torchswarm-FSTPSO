@@ -26,10 +26,9 @@ class SwarmOptimizer:
         #     self.swarm.append(self.particle(dimensions, **kwargs))
 
         self.dimensions = dimensions
+        self.verbose=verbose
 
     def optimize(self, function):
-        # Perhaps it's best to initalize here, with full information about the dimensions and search space
-        # dimensions = function.dimensions
         dimensions = self.dimensions
         bounds = function.bounds
         self.fitness_function = function
@@ -38,12 +37,11 @@ class SwarmOptimizer:
                     self.swarm.append(self.particle(dimensions=dimensions, bounds=bounds, function=function))
 
         self.gbest_particle = None
-        # self.gbest_value = min(p.pbest_value for p in self.swarm)
         self.gbest_position = min((p.pbest_position for p in self.swarm), key=self.fitness_function.evaluate) 
-        print("self.gbest_position:", self.gbest_position)
+        _vprint(self.verbose, "self.gbest_position:", self.gbest_position)
         self.gbest_value = self.fitness_function.evaluate(self.gbest_position) 
-        print("self.gbest_value:", self.gbest_value)
-        print(f"Swarm Initialized for {function.__class__.__name__} with bounds:{bounds}.") 
+        _vprint(self.verbose, "self.gbest_value:", self.gbest_value)
+        _vprint(self.verbose, f"Swarm Initialized for {function.__class__.__name__} with bounds:{bounds}.") 
 
 
     def run(self, verbosity=True):

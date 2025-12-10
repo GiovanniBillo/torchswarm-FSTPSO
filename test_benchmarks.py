@@ -13,18 +13,18 @@ from torchswarm.swarmoptimizer.FSO import FuzzySwarmOptimizer
 from torchswarm.functions.benchmarks import (
     Ackley,
     Sphere,
-    Rastrigin,
-    Eggholder,
-    Alpine,
-    Bohachevsky,
-    Griewank,
-    Michalewicz,
-    Plateau,
-    Quintic,
-    Rosenbrock,
-    Shubert,
-    Vincent,
-    XinSheYang,
+    Rastrigin
+    # Eggholder,
+    # Alpine,
+    # Bohachevsky,
+    # Griewank,
+    # Michalewicz,
+    # Plateau,
+    # # Quintic,
+    # Rosenbrock,
+    # Shubert,
+    # Vincent,
+    # XinSheYang,
 )
 
 from consts import TRUE_OPTIMA
@@ -125,8 +125,8 @@ if __name__ == "__main__":
 
     # Functions supporting ANY dimension
     run_test(Ackley, dim=5)
-    # run_test(Sphere, dim=5)
-    # run_test(Rastrigin, dim=5)
+    run_test(Sphere, dim=5)
+    run_test(Rastrigin, dim=5)
     # run_test(Alpine, dim=5)
     # run_test(Griewank, dim=5)
     # run_test(Michalewicz, dim=5)

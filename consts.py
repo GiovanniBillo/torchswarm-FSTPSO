@@ -1,6 +1,8 @@
 import math
 import numpy as np
 
+from scipy.integrate import odeint
+
 RESULTS_DIR = 'results'
 TRUE_OPTIMA = {
     "Ackley": 0.0,
@@ -20,7 +22,6 @@ TRUE_OPTIMA = {
     "LotkaVolterra": 0.0
 }
 
-TRUE_PARAMS={"LotkaVolterra": np.array([[0.1, 0.02],[0.01, 0.1]])}
 
 BOUNDS = {
     "Ackley":       (-30, 30),
@@ -39,10 +40,4 @@ BOUNDS = {
     "Eggholder":      (-512, 512),
 }
 
-PROBLEM_BOUNDS = {
-        "LotkaVolterra": (0, 1)
-    # "Reflectance":       (-30, 30),
-
-    # "Reflectance":      ['bounds for backscattering'], ['bounds for absorption'] # if any
-        }
 

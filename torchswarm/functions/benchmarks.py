@@ -1,8 +1,8 @@
 import torch
 import math
 from debug_utils import _vprint
-from consts import BOUNDS, PROBLEM_BOUNDS
-from scipy.integrate import odeint
+from consts import BOUNDS
+import warnings 
 
 class Function:
     def __init__(self):
@@ -10,7 +10,21 @@ class Function:
         self.bounds = None
     def evaluate(self, pos):
         raise NotImplementedError
+    def get_bounds(self, pos, how=["tuple", "array"]):
+        if how == "tuple":
+            if isinstance(self.bounds, tuple):
+                return self.bounds
+            if isinstance(self.bounds, numpy.ndarray):
+                warnings.warn("Warning: attempting to return a tuple when bounds were provided as array. Defaulting to array...")
+                return torch.Tensor(([self.bounds[0], self.bounds[1]]*self.dimensions)) 
+        elif how == "array":
+            if isinstance(self.bounds, torch.Tensor):
+                return self.bounds
+            if isinstance(self.bounds, tuple):
+                warnings.warn("Warning: attempting to return an array when bounds were provided as array. Defaulting to array...")
 
+                return torch.Tensor(([self.bounds[0], self.bounds[1]]*self.dimensions)) 
+            
 
 def _ensure_2d(pos):
     """Ensure pos is [batch, dim]."""
@@ -18,50 +32,11 @@ def _ensure_2d(pos):
         pos = pos.unsqueeze(0)
     return pos
 
-def Reflectance(Function):
-    def __init__(self):
-        self.bounds = PROBLEM_BOUNDS[self.__class__.__name__]
-    def evaluate(self, pos):
-        
-        gt = "Something you retrieve from the dataset itself" # i.e idk, initialize a particle swarm of the same size of the observations that were taken everyday and then compare them in order 
-        g_0 = 0.089
-        g_1 = 0.1245
-
-        bbp = pos[0]
-        atot = pos[1]
-        first = g_0*(bbp/(bbp + atot)) 
-        second = g_1*(bbp/(bbp + atot))**2
-        pred = first + second 
-
-        out = pred - gt 
-        return out.squeeze()
 
 ## Good reference for typical benchmark optimization functions: https://www.sfu.ca/~ssurjano/ackley.html or whatever function one might need
 # ---------------------------------------------------------
 #  ACKLEY
 # ---------------------------------------------------------
-def lotka_volterra(state, t, params):
-    r = params[0][0]
-    a = params[0][1]
-    b = params[1][0]
-    z = params[1][1]
-
-    X = state[0]
-    Y = state[1]
-
-    dxdt = r*X - a*X*Y
-    dydt = b*X*Y - z*Y
-
-    return [dxdt, dydt]
-
-class LotkaVolterra(Function):
-    def __init__(self, target_traj):
-        self.target_traj = target_traj
-    def eval(self, individual):
-        t = np.linspace(0, 100, 100)
-        initial_conditions=self.target_traj[0]
-        sol = odeint(lotka_volterra, initial_conditions, t, args=(individual,))
-        return np.mean((sol - self.target_traj) ** 2)
 
 class Ackley(Function):
     def __init__(self):
@@ -115,6 +90,17 @@ class Rastrigin(Function):
 
 
 # ---------------------------------------------------------
+#  ALPINE
+# ---------------------------------------------------------
+class Alpine(Function):
+    def __init__(self):
+        self.bounds = BOUNDS[self.__class__.__name__]
+    def evaluate(self, pos):
+        pos = _ensure_2d(pos)
+        return torch.sum(torch.abs(pos * torch.sin(pos) + 0.1 * pos))
+
+
+# ---------------------------------------------------------
 #  EGGHOLDER
 # ---------------------------------------------------------
 class Eggholder(Function):
@@ -128,17 +114,6 @@ class Eggholder(Function):
         term1 = -(y + 47) * torch.sin(torch.sqrt(torch.abs(x / 2 + (y + 47))))
         term2 = -x * torch.sin(torch.sqrt(torch.abs(x - (y + 47))))
         return term1 + term2
-
-
-# ---------------------------------------------------------
-#  ALPINE
-# ---------------------------------------------------------
-class Alpine(Function):
-    def __init__(self):
-        self.bounds = BOUNDS[self.__class__.__name__]
-    def evaluate(self, pos):
-        pos = _ensure_2d(pos)
-        return torch.sum(torch.abs(pos * torch.sin(pos) + 0.1 * pos))
 
 
 # ---------------------------------------------------------
@@ -221,47 +196,6 @@ class Plateau(Function):
 
     def evaluate(self, pos):
         pos = _ensure_2d(pos)
-        return torch.sum(torch.floor(pos + 0.5)**2)
-
-
-# ---------------------------------------------------------
-#  QUINTIC
-# ---------------------------------------------------------
-class Quintic(Function):
-
-    def __init__(self):
-        self.bounds = BOUNDS[self.__class__.__name__]
-    def evaluate(self, pos):
-        pos = _ensure_2d(pos)
-        x = pos
-        return torch.sum(
-            torch.abs(x**5 - 3 * x**4 + 4 * x**3 + 2 * x**2 - 10 * x - 4)
-        )
-
-
-# ---------------------------------------------------------
-#  ROSENBROCK
-# ---------------------------------------------------------
-class Rosenbrock(Function):
-    def __init__(self):
-        self.bounds = BOUNDS[self.__class__.__name__]
-
-    def evaluate(self, pos):
-        pos = _ensure_2d(pos)  # shape (batch, D)
-        # x = pos
-
-        # Compute term-by-term: dimension d interacts only with d+1
-        # return torch.sum(
-        #     100 * (x[:, 1:] - x[:, :-1]**2)**2 +
-        #     (1 - x[:, :-1])**2,
-        #     dim=1
-        # )
-        x = pos[:,0]  # (M,)
-
-        return torch.sum(100*(x[1:] - x[:-1]**2)**2 + (1 - x[:-1])**2)
-
-# ---------------------------------------------------------
-#  SHUBERT
 # ---------------------------------------------------------
 class Shubert(Function):
 

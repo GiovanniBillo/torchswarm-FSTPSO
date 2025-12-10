@@ -8,46 +8,17 @@ import csv
 print("Torch version:", torch.__version__)
 print("Built with CUDA:", torch.version.cuda)
 
-from torchswarm.swarmoptimizer import SwarmOptimizer, FuzzySwarmOptimizer
-from torchswarm.functions.benchmarks import LotkaVolterra
 
-from consts import TRUE_OPTIMA
+from torchswarm.swarmoptimizer.SO import SwarmOptimizer
+from torchswarm.swarmoptimizer.FSO import FuzzySwarmOptimizer
 
 from debug_utils import save_csv, build_master_table # not really debug utils but whatever
 
-# ---------------------------------------------------------
-# Command-line arguments
-# ---------------------------------------------------------
-parser = argparse.ArgumentParser()
+from torchswarm.functions.misc import LotkaVolterra
 
-parser.add_argument(
-    "-v", "--verbose",
-    action="store_true",
-    help="enable verbose output for PSO runs"
-)
+from cli import get_args
 
-parser.add_argument(
-    "--model",
-    choices=["std", "fuzzy"],
-    default="std",
-    help="Select which PSO variant to run"
-)
-
-parser.add_argument(
-    "--nruns",
-    type=int,
-    default=1,
-    help="Number of runs to perform for each benchmark function"
-)
-
-parser.add_argument(
-    "--niter",
-    type=int,
-    default=400,
-    help="Number of iterations per run"
-)
-
-args = parser.parse_args()
+args = get_args() 
 
 VERBOSE = args.verbose
 MODEL = args.model
@@ -77,7 +48,7 @@ def log(msg):
 # Run experiment
 # ---------------------------------------------------------
 
-def run_test(func_class, dim, name=None, filename="master_table.csv"):
+def run_test(func_class, dim, name=None, filename="master_table.csv", **kwargs):
     if name is None:
         name = func_class.__name__
 
@@ -93,7 +64,6 @@ def run_test(func_class, dim, name=None, filename="master_table.csv"):
             opt = SwarmOptimizer(
                 dim,
                 swarm_size=100,
-                n_particles=100,
                 swarm_optimizer_type="standard",
                 max_iterations=NITER,
                 verbose=VERBOSE,
@@ -139,5 +109,6 @@ def run_test(func_class, dim, name=None, filename="master_table.csv"):
 if __name__ == "__main__":
 
     # Functions supporting ANY dimension
-    run_test(LotkaVolterra, dim=5)
+    run_test(LotkaVolterra, dim=2)
+    # run_test(LotkaVolterra, dim=4)
 
