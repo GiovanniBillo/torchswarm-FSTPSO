@@ -39,7 +39,6 @@ class Particle:
             self.velocity[i] = self.w * self.velocity[i] \
                                + self.c1 * r1 * (self.pbest_position[i] - self.position[i]) \
                                + self.c2 * r2 * (gbest_position[i] - self.position[i])
-            
         swarm_parameters = SwarmParameters()
         swarm_parameters.r1 = r1
         swarm_parameters.r2 = r2

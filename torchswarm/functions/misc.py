@@ -4,7 +4,7 @@ from scipy.integrate import odeint
 import numpy as np
 
 PROBLEM_BOUNDS = {
-        "LotkaVolterra": (0, 1)
+        "LotkaVolterra": (0.0001, 0.2) ## how can one bound be if these represent growth rate, death rate and stuff like that??
     # "Reflectance":       (-30, 30),
 
     # "Reflectance":      ['bounds for backscattering'], ['bounds for absorption'] # if any
@@ -50,6 +50,8 @@ class LotkaVolterra(Function):
             self.ground_truth = ground_truth
         else:
             self.ground_truth = REAL_SOLUTIONS[self.name]
+
+        print("initial_condition:", self.ground_truth[0])
         if self.real_params:
             self.real_params = real_params
         else:
@@ -60,9 +62,9 @@ class LotkaVolterra(Function):
     def evaluate(self, pos):
         t = np.linspace(0, 100, 100)
         initial_conditions = self.ground_truth[0]
+        # print("position passed to LotkaVolterra:", pos)  
 
         assert pos.shape == TRUE_PARAMS["LotkaVolterra"].shape, f"AssertionError: pos should have size {TRUE_PARAMS["LotkaVolterra"].shape} but has shape {pos.shape}" 
-
         try:
             sol = odeint(lotka_volterra, initial_conditions, t, args=(pos,))
         except Exception as e:
@@ -70,7 +72,7 @@ class LotkaVolterra(Function):
             return 1e12
 
         mse = np.mean((sol - self.ground_truth) ** 2)
-        print(f" -> {self.name} MSE = {mse}")
+        # print(f" -> {self.name} MSE = {mse}")
         return mse
 
 class Reflectance(Function):

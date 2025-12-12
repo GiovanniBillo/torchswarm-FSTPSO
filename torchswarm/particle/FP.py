@@ -76,6 +76,8 @@ class FuzzyParticle(Particle):
 
         for i in range(0, self.dimensions):
             # TODO: correct! could/should be one for each dimension (like the bounds)
+
+            # MOST LIKELY THERE IS SOME MISTAKE HERE...
             velmin = self.velbounds[i][0]
             velmax = self.velbounds[i][1]
             

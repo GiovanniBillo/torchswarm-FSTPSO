@@ -106,8 +106,7 @@ def run_test(func_class, dim, classes=1, name=None, filename="master_table.csv",
 # MAIN
 # ---------------------------------------------------------
 if __name__ == "__main__":
-
-    # Functions supporting ANY dimension
+    
     run_test(LotkaVolterra, dim=2, classes=2)
     # run_test(LotkaVolterra, dim=4)
 

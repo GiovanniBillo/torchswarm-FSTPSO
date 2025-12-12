@@ -53,6 +53,7 @@ class SwarmOptimizer:
 
         # --- Run
         for iteration in range(self.max_iterations):
+            _vprint(self.verbose, f"{'='*80}\n iteration {iteration} \n{'='*80}")
             tic = time.monotonic()
             # --- Set PBest
             for particle in self.swarm:
