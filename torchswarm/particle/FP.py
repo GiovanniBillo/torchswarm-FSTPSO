@@ -12,6 +12,8 @@ class FuzzyParticle(Particle):
     def __init__(self, dimensions, max_iterations, w=0.5, c_soc=2, c_cog=2, U=0.2, L=0.1, verbose=False, **kwargs): # TODO: tune parameters further
         self.verbose = verbose
         self.dimensions = dimensions
+
+        self.classes = kwargs.get("classes") if kwargs.get("classes") else 1 
         self.seed = torch.manual_seed(kwargs.get("seed")) if kwargs.get("seed") else torch.manual_seed(0) 
         self.w = torch.full((max_iterations,), w) # inertia coefficient
         self.c_soc = torch.full((max_iterations,), c_soc) # social coefficient

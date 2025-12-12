@@ -22,28 +22,46 @@ class SwarmOptimizer:
         self.swarm = []
         # A sol_shape parameter would probably be more coincise than dimensions and classes
 
-        # for i in range(self.swarm_size):
-        #     self.swarm.append(self.particle(dimensions, **kwargs))
-
+        self.seed = torch.manual_seed(kwargs.get("seed")) if kwargs.get("seed") else 0 
+        torch.manual_seed(self.seed)
         self.dimensions = dimensions
         self.classes = kwargs.get("classes") if kwargs.get("classes") else 1
+        self.sol_shape = (self.dimensions, self.classes)
         self.verbose=verbose
+        self.name = self.__class__.__name__
+        print(f"fInitialized {self.name} object.")
+
+    # def optimize(self, function):
+    #     dimensions = self.dimensions
+    #     classes = self.classes
+    #     bounds = function.bounds
+    #     self.fitness_function = function
+    #     print("Initializing particle swarm...") 
+    #     for i in range(self.swarm_size):
+    #                 # self.swarm.append(self.particle(dimensions=dimensions, bounds=bounds, function=function, classes=classes))
+    #                 self.swarm.append(self.particle(dimensions=dimensions, bounds=bounds, function=function, classes=classes))
+
+    #     self.gbest_particle = None
+    #     self.gbest_position = min((p.pbest_position for p in self.swarm), key=self.fitness_function.evaluate) 
+    #     _vprint(self.verbose, "self.gbest_position:", self.gbest_position)
+    #     self.gbest_value = self.fitness_function.evaluate(self.gbest_position) 
+    #     _vprint(self.verbose, "self.gbest_value:", self.gbest_value)
+    #     _vprint(self.verbose, f"{self.name}: Swarm Initialized for {function.__class__.__name__} with bounds:{bounds}.") 
 
     def optimize(self, function):
-        dimensions = self.dimensions
-        classes = self.classes
         bounds = function.bounds
         self.fitness_function = function
         print("Initializing particle swarm...") 
         for i in range(self.swarm_size):
-                    self.swarm.append(self.particle(dimensions=dimensions, bounds=bounds, function=function, classes=classes))
+                    # self.swarm.append(self.particle(dimensions=dimensions, bounds=bounds, function=function, classes=classes))
+                    self.swarm.append(self.particle(self.sol_shape, bounds=bounds, fitness_function=function))
 
         self.gbest_particle = None
         self.gbest_position = min((p.pbest_position for p in self.swarm), key=self.fitness_function.evaluate) 
         _vprint(self.verbose, "self.gbest_position:", self.gbest_position)
         self.gbest_value = self.fitness_function.evaluate(self.gbest_position) 
         _vprint(self.verbose, "self.gbest_value:", self.gbest_value)
-        _vprint(self.verbose, f"Swarm Initialized for {function.__class__.__name__} with bounds:{bounds}.") 
+        _vprint(self.verbose, f"{self.name}: Swarm Initialized for {function.__class__.__name__} with bounds:{bounds}.") 
 
 
     def run(self, verbosity=True):

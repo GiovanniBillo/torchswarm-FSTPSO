@@ -72,6 +72,7 @@ def run_test(func_class, dim, classes=1, name=None, filename="master_table.csv",
                 dim,
                 swarm_optimizer_type="fuzzy",
                 max_iterations=NITER,
+                classes=classes
             )
         else:
             print("Unrecognized model passed!")

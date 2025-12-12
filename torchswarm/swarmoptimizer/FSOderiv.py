@@ -1,3 +1,4 @@
+
 import time
 
 import torch
@@ -6,90 +7,23 @@ import math
 
 from torchswarm.particle.particle_factory import get_particle_instance
 from torchswarm.utils.parameters import SwarmParameters
+from torchswarm.swarmoptimizer.SO import SwarmOptimizer
 from FRBS import Frbs
 from debug_utils import _vprint, ParticleStateTracker
 
-class FuzzySwarmOptimizer:
+class FuzzySwarmOptimizer(SwarmOptimizer):
     def __init__(self, dimensions, swarm_optimizer_type="fuzzy", particle=None, verbose=False, **kwargs):
-        self.verbose=verbose
         self.swarm_size = math.floor(10 + 2*math.sqrt(dimensions)) # set according to rule in paper, paragraph 3
         
-        if not particle:
-            self.particle = get_particle_instance(swarm_optimizer_type)
-        else:
-            self.particle = particle
-        self.max_iterations = kwargs.get('max_iterations') if kwargs.get('max_iterations') else 100
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.device = kwargs.get("device") if kwargs.get("device") else device
-        
-        self.seed = torch.manual_seed(kwargs.get("seed")) if kwargs.get("seed") else 0 
-        torch.manual_seed(self.seed)
-
-        self.swarm = []
-        self.swarm_old = []
-        self.dimensions = dimensions
-        self.classes = kwargs.get("classes") if kwargs.get("classes") else 1
-
         # extra stuff for fuzzy implementation
         self.f_triangle = torch.tensor(torch.inf)# highest value of fitness at the first iteration
         self.delta_max = None # length of diagonal of hyperrectangle in search space
-        print("Initialized FuzzySwarmOptimizer object.")
 
     def calculate_delta_max(self, bounds):
         delta_max = 0
         for i in range(self.dimensions):
             delta_max += (bounds[1]-bounds[0])**2
         return math.sqrt(delta_max)
-
-
-    def optimize(self, function):
-
-            self.fitness_function = function
-            print("Initializing particle swarm...")
-
-            bounds = function.bounds
-            low, high = bounds
-            side = high - low
-
-            # will be needed inside particles
-            # self.delta_max = math.sqrt(self.dimensions) * abs(side)
-            self.delta_max = self.calculate_delta_max(bounds)
-
-
-
-            # --- initialize particles ---
-            self.swarm = []
-            for i in range(self.swarm_size):
-
-                # instantiate particle
-                p = self.particle(
-                    dimensions=self.dimensions,
-                    classes=self.classes,
-                    max_iterations=self.max_iterations,
-                    bounds=bounds,
-                    # seed=self.seed --> this initializes all the particles in the same position!!!
-                    seed=i
-                )
-
-                # 1. initialize velocity (IMPORTANT — do NOT leave as zeros!)
-                vel_scale = (high - low) * 0.1     # 10% of search range
-                p.velocity = (torch.rand_like(p.position) - 0.5) * vel_scale
-
-                # 2. initial pbest = current position
-                p.pbest_position = p.position.clone()
-
-                # 3. initial pbest_value = fitness(position)
-                p.pbest_value = self.fitness_function.evaluate(p.position)
-
-                self.swarm.append(p)
-
-            # --- initialize global best ---
-            self.gbest_particle = min(self.swarm, key=lambda p: p.pbest_value.item())
-            self.gbest_value = self.gbest_particle.pbest_value.clone()
-            self.gbest_position = self.gbest_particle.pbest_position.clone()
-
-            print(f"Fuzzy Swarm of size {self.swarm_size} initialized for "
-                  f"{function.__class__.__name__} with bounds {bounds} and delta_max={self.delta_max}.")
 
     def compute_delta(self, X_i, X_j):
         '''

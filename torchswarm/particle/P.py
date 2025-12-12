@@ -7,29 +7,47 @@ from FRBS import Frbs
 from debug_utils import _vprint
 
 class Particle:
-    def __init__(self, dimensions, w=0.9, c1=1.5, c2=1.5, **kwargs):
-        self.dimensions = dimensions
+    # def __init__(self, dimensions, w=0.9, c1=1.5, c2=1.5, **kwargs):
+    #     self.dimensions = dimensions
+    #     self.w = w
+    #     self.c1 = c1
+    #     self.c2 = c2
+    #     classes = kwargs.get("classes") if kwargs.get("classes") else 1
+    #     self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    #     self.device = kwargs.get("device") if kwargs.get("device") else self.device
+
+    #     if kwargs.get("bounds"):
+    #         self.bounds = kwargs.get("bounds")
+    #         self.position = (self.bounds[0] - self.bounds[1]) * torch.rand(dimensions, classes).to(self.device) + self.bounds[1]
+    #     else:
+    #         self.bounds = None
+    #         self.position = torch.rand(dimensions, classes).to(self.device)
+    #     if kwargs.get("function"):
+    #         self.fit = kwargs.get("function")
+    #     self.velocity = torch.randn(dimensions, classes).to(self.device) * 0.1
+
+    #     self.pbest_position = self.position.clone()
+    #     # self.pbest_value = None 
+
+    #     # self.pbest_value = torch.Tensor([float("inf")]).to(self.device)
+    #     self.pbest_value = self.fit.evaluate(self.pbest_position) 
+    def __init__(self, sol_shape, bounds, fitness_function, w=0.9, c1=1.5, c2=1.5, **kwargs):
         self.w = w
         self.c1 = c1
         self.c2 = c2
-        classes = kwargs.get("classes") if kwargs.get("classes") else 1
+        self.sol_shape = sol_shape
+        self.dimensions = self.sol_shape[0]
+        self.classes = self.sol_shape[1]
+        self.bounds = bounds 
+        self.fit = fitness_function
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.device = kwargs.get("device") if kwargs.get("device") else self.device
+        
+        # Actual particle initialization
+        self.position = (self.bounds[0] - self.bounds[1]) * torch.rand(sol_shape).to(self.device) + self.bounds[1]
 
-        if kwargs.get("bounds"):
-            self.bounds = kwargs.get("bounds")
-            self.position = (self.bounds[0] - self.bounds[1]) * torch.rand(dimensions, classes).to(self.device) + self.bounds[1]
-        else:
-            self.bounds = None
-            self.position = torch.rand(dimensions, classes).to(self.device)
-        if kwargs.get("function"):
-            self.fit = kwargs.get("function")
-        self.velocity = torch.randn(dimensions, classes).to(self.device) * 0.1
-
+        self.velocity = torch.randn(sol_shape).to(self.device) * 0.1
         self.pbest_position = self.position.clone()
-        # self.pbest_value = None 
-
-        # self.pbest_value = torch.Tensor([float("inf")]).to(self.device)
         self.pbest_value = self.fit.evaluate(self.pbest_position) 
 
     def update_velocity(self, gbest_position):
