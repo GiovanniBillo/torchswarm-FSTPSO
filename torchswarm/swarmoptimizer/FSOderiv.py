@@ -12,8 +12,13 @@ from FRBS import Frbs
 from debug_utils import _vprint, ParticleStateTracker
 
 class FuzzySwarmOptimizer(SwarmOptimizer):
-    def __init__(self, dimensions, swarm_optimizer_type="fuzzy", particle=None, verbose=False, **kwargs):
-        self.swarm_size = math.floor(10 + 2*math.sqrt(dimensions)) # set according to rule in paper, paragraph 3
+    def __init__(self, sol_shape, swarm_optimizer_type="fuzzy", particle=None, verbose=False, **kwargs):
+        SwarmOptimizer.__init__(self, sol_shape=sol_shape, swarm_size=None, swarm_optimizer_type=swarm_optimizer_type, particle=particle, verbose=verbose, **kwargs)
+        # self.sol_shape = sol_shape
+        # self.dimensions = sol_shape[0]
+        # self.classes = sol_shape[1]
+
+        self.swarm_size = math.floor(10 + 2*math.sqrt(self.dimensions)) # set according to rule in paper, paragraph 3
         
         # extra stuff for fuzzy implementation
         self.f_triangle = torch.tensor(torch.inf)# highest value of fitness at the first iteration
@@ -24,6 +29,23 @@ class FuzzySwarmOptimizer(SwarmOptimizer):
         for i in range(self.dimensions):
             delta_max += (bounds[1]-bounds[0])**2
         return math.sqrt(delta_max)
+
+    def optimize(self, function):
+        bounds = function.bounds
+        self.fitness_function = function
+        self.delta_max = self.calculate_delta_max(bounds)
+
+        print("Initializing particle swarm...") 
+        for i in range(self.swarm_size):
+                    # self.swarm.append(self.particle(dimensions=dimensions, bounds=bounds, function=function, classes=classes))
+                    self.swarm.append(self.particle(self.sol_shape, self.max_iterations, bounds=bounds, fitness_function=function))
+
+        self.gbest_particle = None
+        self.gbest_position = min((p.pbest_position for p in self.swarm), key=self.fitness_function.evaluate) 
+        _vprint(self.verbose, "self.gbest_position:", self.gbest_position)
+        self.gbest_value = self.fitness_function.evaluate(self.gbest_position) 
+        _vprint(self.verbose, "self.gbest_value:", self.gbest_value)
+        _vprint(self.verbose, f"{self.name}: Swarm Initialized for {function.__class__.__name__} with bounds:{bounds}.") 
 
     def compute_delta(self, X_i, X_j):
         '''
@@ -56,7 +78,6 @@ class FuzzySwarmOptimizer(SwarmOptimizer):
         f_pos      = self.fitness_function.evaluate(pos)
         f_prev_pos = self.fitness_function.evaluate(pos_prev)
         ftri       = torch.max(self.f_triangle, torch.Tensor([1e-6])) # fix to avoid division by 0
-
         print("fitnesses:", f_pos, f_prev_pos, ftri)
         # Compute the min terms
         min_curr = torch.min(f_pos, ftri)
@@ -237,4 +258,5 @@ class FuzzySwarmOptimizer(SwarmOptimizer):
         swarm_parameters.gbest_value = self.gbest_value.item()
         return swarm_parameters
 
-
+def main():
+    FS_derived = FuzzySwarmOptimizer()
