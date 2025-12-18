@@ -8,7 +8,7 @@ print("Torch version:", torch.__version__)
 print("Built with CUDA:", torch.version.cuda)
 
 from torchswarm.swarmoptimizer.SO import SwarmOptimizer
-from torchswarm.swarmoptimizer.FSO import FuzzySwarmOptimizer
+from torchswarm.swarmoptimizer.FSOderiv import FuzzySwarmOptimizer
 
 from torchswarm.functions.benchmarks import (
     Ackley,
@@ -61,11 +61,11 @@ def log(msg):
 # Run experiment
 # ---------------------------------------------------------
 
-def run_test(func_class, dim, name=None, filename="master_table.csv", args=args):
+def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args=args):
     if name is None:
         name = func_class.__name__
 
-    header = f"{'='*80}\nTesting function: {name} (dim={dim}) using model={MODEL}\n{'='*80}"
+    header = f"{'='*80}\nTesting function: {name} (Solution Shape ={sol_shape}) using model={MODEL}\n{'='*80}"
     args = f"{'='*80}\nARGS == {args}:\n{'='*80}"
     log(header)
     log(args)
@@ -77,7 +77,7 @@ def run_test(func_class, dim, name=None, filename="master_table.csv", args=args)
         # choose optimizer
         if MODEL == "std":
             opt = SwarmOptimizer(
-                dim,
+                sol_shape,
                 swarm_size=100,
                 swarm_optimizer_type="standard",
                 max_iterations=NITER,
@@ -85,9 +85,10 @@ def run_test(func_class, dim, name=None, filename="master_table.csv", args=args)
             )
         elif MODEL == "fuzzy": 
             opt = FuzzySwarmOptimizer(
-                dim,
+                sol_shape,
                 swarm_optimizer_type="fuzzy",
                 max_iterations=NITER,
+                verbose=VERBOSE,
             )
         else:
             print("Unrecognized model passed!")
@@ -122,11 +123,14 @@ def run_test(func_class, dim, name=None, filename="master_table.csv", args=args)
 # MAIN
 # ---------------------------------------------------------
 if __name__ == "__main__":
-
+    
+    benchmark_shape = torch.Size([5, 1])
     # Functions supporting ANY dimension
-    run_test(Ackley, dim=5)
-    run_test(Sphere, dim=5)
-    run_test(Rastrigin, dim=5)
+
+    run_test(Ackley, sol_shape=benchmark_shape)
+    # run_test(Ackley, dim=5)
+    # run_test(Sphere, dim=5)
+    # run_test(Rastrigin, dim=5)
     # run_test(Alpine, dim=5)
     # run_test(Griewank, dim=5)
     # run_test(Michalewicz, dim=5)

@@ -56,18 +56,7 @@ class Ackley(Function):
         term1 = -20 * torch.exp(-0.2 * torch.sqrt(mean_sq))
         term2 = -torch.exp(mean_cos)
         return term1 + term2 + 20 + torch.e                           # (N,)
-    # def evaluate(self, swarm):
-    #     # swarm: (swarm_size, dim, classes)
 
-    #     term1 = -20 * torch.exp(
-    #         -0.2 * torch.sqrt(torch.mean(swarm**2, dim=1))
-    #     )
-
-    #     term2 = -torch.exp(
-    #         torch.mean(torch.cos(2 * torch.pi * swarm), dim=1)
-    #     )
-
-    #     return term1 + term2 + 20 + torch.e   # (N,)
 
 class ParallelSwarmOptimizer:
     def __init__(self, sol_shape, swarm_size, fitness_function, swarm_optimizer_type="standard", particle=None, verbose=False, **kwargs):
@@ -113,7 +102,9 @@ class ParallelSwarmOptimizer:
     
     def optimize(self, function):
         pass
-        
+
+    # NB: it's normal that PSO is slower to convergence with the same number of iterations: it's due to the parallel implementation happening synchronously.  
+
     def run(self, verbosity=True):
         for i in range(self.max_iterations):
             tic = time.monotonic()
@@ -121,6 +112,7 @@ class ParallelSwarmOptimizer:
             r2 = torch.rand_like(self.swarm_velocities)
 
             current_fitness = self.fitness_function.evaluate(self.swarm)
+            print("CURRENT_FITNESS:", current_fitness)
             # update local best
             assert current_fitness.shape == (self.swarm_size,), \
                 f"fitness must be (N,), got {current_fitness.shape}"

@@ -60,12 +60,11 @@ class LotkaVolterra(Function):
         self.real_params = real_params
 
     def evaluate(self, pos):
-        print("Type and shape of pos:", type(pos), pos.shape)
         t = np.linspace(0, 100, 100)
         initial_conditions = self.ground_truth[0]
         # print("position passed to LotkaVolterra:", pos)  
 
-        # assert pos.shape == TRUE_PARAMS["LotkaVolterra"].shape, f"AssertionError: pos should have size {TRUE_PARAMS["LotkaVolterra"].shape} but has shape {pos.shape}" 
+        assert pos.shape == TRUE_PARAMS["LotkaVolterra"].shape, f"AssertionError: pos should have size {TRUE_PARAMS["LotkaVolterra"].shape} but has shape {pos.shape}" 
         try:
             sol = odeint(lotka_volterra, initial_conditions, t, args=(pos,))
         except Exception as e:

@@ -32,10 +32,15 @@ def get_args():
     parser.add_argument(
         "--niter",
         type=int,
-        default=400,
+        default=100,
         help="Number of iterations per run"
     )
-
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="serial",
+        help="version of the algorithm to be used"
+    )
 
     args = parser.parse_args()
     return args

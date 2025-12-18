@@ -35,7 +35,7 @@ class SwarmOptimizer:
     
     def optimize(self, function):
 
-        if self.mode = "serial":
+        if self.mode == "serial":
 
             bounds = function.bounds
             self.fitness_function = function
@@ -51,12 +51,12 @@ class SwarmOptimizer:
             _vprint(self.verbose, "self.gbest_value:", self.gbest_value)
             _vprint(self.verbose, f"{self.name}: Swarm Initialized for {function.__class__.__name__} with bounds:{bounds}.") 
 
-        if self.mode == "parallel":
+        # if self.mode == "parallel":
 
-            self.swarm = torch.empty(size=(self.swarm_size, sol_shape)).uniform_(bounds[0], bounds[1]) 
-            self.gbest_particle = None
-            first_fitness = self.fitness_function.evaluate(self.swarm)
-            self.gbest_position = torch.min(first_fitness) 
+        #     self.swarm = torch.empty(size=(self.swarm_size, sol_shape)).uniform_(bounds[0], bounds[1]) 
+        #     self.gbest_particle = None
+        #     first_fitness = self.fitness_function.evaluate(self.swarm)
+        #     self.gbest_position = torch.min(first_fitness) 
 
     def run(self, verbosity=True):
         swarm_parameters = SwarmParameters()
@@ -99,14 +99,13 @@ class SwarmOptimizer:
             swarm_parameters.gbest_value = self.gbest_value.item()
             swarm_parameters.c1 = self.gbest_particle.c1
             swarm_parameters.c2 = self.gbest_particle.c2
-        if self.mode == "parallel":
+        # if self.mode == "parallel":
 
-                local_best_values = torch.random_like(self.swarm)
-                local_best_positions = torch.random_like(self.swarm) 
-                global_best_value = torch.random_like(sol_shape)
-                global_best_position = torch.random_like(sol_shape)
+        #         local_best_values = torch.random_like(self.swarm)
+        #         local_best_positions = torch.random_like(self.swarm) 
+        #         global_best_value = torch.random_like(sol_shape)
+        #         global_best_position = torch.random_like(sol_shape)
 
-            for iteration in range(self.max_iterations):
                 
 
 

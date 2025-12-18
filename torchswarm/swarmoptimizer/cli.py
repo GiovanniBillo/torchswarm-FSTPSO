@@ -32,7 +32,7 @@ def get_args():
     parser.add_argument(
         "--niter",
         type=int,
-        default=5000,
+        default=100,
         help="Number of iterations per run"
     )
 

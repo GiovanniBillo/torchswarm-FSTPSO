@@ -1,4 +1,3 @@
-
 import argparse
 import torch
 import os
@@ -8,18 +7,15 @@ import csv
 print("Torch version:", torch.__version__)
 print("Built with CUDA:", torch.version.cuda)
 
-
 from torchswarm.swarmoptimizer.SO import SwarmOptimizer
 from torchswarm.swarmoptimizer.FSO import FuzzySwarmOptimizer
 
-from debug_utils import save_csv, build_master_table # not really debug utils but whatever
-
-from torchswarm.functions.misc import LotkaVolterra
-
+from consts import TRUE_OPTIMA
 from cli import get_args
 
-args = get_args() 
+from debug_utils import save_csv, build_master_table # not really debug utils but whatever
 
+args = get_args()
 VERBOSE = args.verbose
 MODEL = args.model
 NRUNS = args.nruns
@@ -43,17 +39,14 @@ def log(msg):
     with open(model_file, "a") as f:
         f.write(msg + "\n")
 
-
-# ---------------------------------------------------------
-# Run experiment
-# ---------------------------------------------------------
-
-def run_test(func_class, dim, classes=1, name=None, filename="master_table.csv", **kwargs):
+def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args=args):
     if name is None:
         name = func_class.__name__
 
     header = f"{'='*80}\nTesting function: {name} (dim={dim}) using model={MODEL}\n{'='*80}"
+    args = f"{'='*80}\nARGS == {args}:\n{'='*80}"
     log(header)
+    log(args)
 
     ABF = 0 
     for run in range(1, NRUNS + 1):
@@ -62,17 +55,17 @@ def run_test(func_class, dim, classes=1, name=None, filename="master_table.csv",
         # choose optimizer
         if MODEL == "std":
             opt = SwarmOptimizer(
-                dim,
+                sol_shape,
                 swarm_size=100,
                 swarm_optimizer_type="standard",
                 max_iterations=NITER,
-                verbose=VERBOSE, classes=classes)
+                verbose=VERBOSE,
+            )
         elif MODEL == "fuzzy": 
             opt = FuzzySwarmOptimizer(
-                dim,
+                sol_shape,
                 swarm_optimizer_type="fuzzy",
                 max_iterations=NITER,
-                classes=classes
             )
         else:
             print("Unrecognized model passed!")
@@ -102,12 +95,4 @@ def run_test(func_class, dim, classes=1, name=None, filename="master_table.csv",
     log(f"{'-'*80}\nFinished {name}. Average Best Value: {ABF}\n{'-'*80}")
     build_master_table(filename)
     print(f"FInal results saved at {filename}.") 
-
-# ---------------------------------------------------------
-# MAIN
-# ---------------------------------------------------------
-if __name__ == "__main__":
-    
-    run_test(LotkaVolterra, dim=2, classes=2)
-    # run_test(LotkaVolterra, dim=4)
 

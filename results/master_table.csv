@@ -1,5 +1,5 @@
 Function,BestFound,TrueValue,Error
-Ackley,tensor(0.0010),0.0,tensor(0.0010)
+Ackley,tensor(3.6901),0.0,tensor(3.6901)
 Sphere,tensor(1.1055e-07),0.0,tensor(1.1055e-07)
 Rastrigin,15.45992660522461,0.0,15.45992660522461
 Alpine,0.7216989994049072,0.0,0.7216989994049072
@@ -11,4 +11,5 @@ Rosenbrock,809417.5,0.0,809417.5
 Vincent,-1.320007085800171,-5.0,3.679992914199829
 XinSheYang,-0.32292747497558594,-1.0,0.6770725250244141
 Bohachevsky,tensor([0.0186]),0.0,tensor([0.0186])
-Eggholder,-861.2459716796875,-959.6407,98.39472832031254
+Eggholder,tensor(-959.6407),-959.6407,tensor(-6.1035e-05)
+LotkaVolterra,tensor(0.1457),0.0,tensor(0.1457)

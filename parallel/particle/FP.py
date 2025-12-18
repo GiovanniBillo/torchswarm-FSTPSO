@@ -9,12 +9,9 @@ from torchswarm.particle.P import Particle
 
 class FuzzyParticle(Particle):
 
-    def __init__(self, sol_shape, max_iterations, w=0.5, c_soc=2, c_cog=2, U=0.2, L=0.1, verbose=False, **kwargs): # TODO: tune parameters further
+    def __init__(self, dimensions, max_iterations, w=0.5, c_soc=2, c_cog=2, U=0.2, L=0.1, verbose=False, **kwargs): # TODO: tune parameters further
         self.verbose = verbose
-        self.sol_shape = sol_shape
-        self.dimensions =self.sol_shape[0] 
-        self.classes = self.sol_shape[1]
-
+        self.dimensions = dimensions
         self.seed = torch.manual_seed(kwargs.get("seed")) if kwargs.get("seed") else torch.manual_seed(0) 
         self.w = torch.full((max_iterations,), w) # inertia coefficient
         self.c_soc = torch.full((max_iterations,), c_soc) # social coefficient
@@ -39,15 +36,15 @@ class FuzzyParticle(Particle):
             _vprint(verbose,"Bounds passed to FuzzyParticleINstance:", self.bounds, "of type:", type(self.bounds))
             if isinstance(self.bounds, tuple):
                 # simple case: bounds are the same for every dimension
-                self.position = (self.bounds[0] - self.bounds[1]) * torch.rand(self.dimensions, self.classes).to(self.device) + self.bounds[1]
+                self.position = (self.bounds[0] - self.bounds[1]) * torch.rand(dimensions, classes).to(self.device) + self.bounds[1]
             elif isinstance(self.bounds, torch.Tensor):
                 # more complicated case: a m-dimensional array of tuples specifies the boundaries of each dimension
-                self.position = torch.zeros(self.dimensions, self.classes)
-                for m in range(self.dimensions):
+                self.position = torch.zeros(dimensions, classes)
+                for m in range(dimensions):
                     self.position[m] = (self.bounds[m][0] - self.bounds[m][1]) * torch.rand(1, classes).to(self.device) + self.bounds[m][1]
         else:
             self.bounds = None
-            self.position = torch.rand(self.dimensions, self.classes).to(self.device)
+            self.position = torch.rand(dimensions, classes).to(self.device)
 
         # TODO: I fear this might be a completely different animal: by modifying velocity bounds in each dimension the particles learn better, but who says that the bounds have to be the same for each dimension?
 
@@ -56,14 +53,14 @@ class FuzzyParticle(Particle):
             self.velbounds = torch.tensor([self.velbounds] * self.dimensions, dtype=torch.float32)
         else:
             self.velbounds = torch.empty((self.dimensions, 2))
-            for m in range(self.dimensions):
+            for m in range(dimensions):
                 minbound, maxbound = self.bounds[m][0], self.bounds[m][1]
                 velmin, velmax = U*(maxbound - minbound), L*(maxbound - minbound)
                 self.velbounds[m] = torch.tensor([velmin, velmax],dtype=torch.float32)
 
 
-        self.velocity = torch.zeros((self.dimensions, self.classes)).to(self.device)
-        self.velocity_old = torch.zeros((self.dimensions, self.classes)).to(self.device)
+        self.velocity = torch.zeros((dimensions, classes)).to(self.device)
+        self.velocity_old = torch.zeros((dimensions, classes)).to(self.device)
         self.pbest_position = self.position
         self.pbest_value = torch.Tensor([float("inf")]).to(self.device)
 

@@ -38,7 +38,6 @@ def _ensure_2d(pos):
 #  ACKLEY
 # ---------------------------------------------------------
 
-## Serial version
 class Ackley(Function):
     def __init__(self):
         self.bounds = BOUNDS[self.__class__.__name__]
@@ -56,49 +55,6 @@ class Ackley(Function):
         out = -20 * torch.exp(-0.2 * term1) - torch.exp(term2) + 20 + torch.e
         return out.squeeze()
 
-## tensorized/parallel version
-# class Ackley(Function):
-#     def __init__(self):
-#         self.bounds = BOUNDS[self.__class__.__name__]
-#     def evaluate(self, swarm):
-#         # swarm: (N, D, C)  (C may be 1)
-#         # reduce over D and C -> output (N,)
-#         dims = tuple(range(1, swarm.ndim))  # (1,2) for (N,D,C)
-
-#         mean_sq = torch.mean(swarm**2, dim=dims)                      # (N,)
-#         mean_cos = torch.mean(torch.cos(2 * torch.pi * swarm), dim=dims)  # (N,)
-
-#         term1 = -20 * torch.exp(-0.2 * torch.sqrt(mean_sq))
-#         term2 = -torch.exp(mean_cos)
-#         return term1 + term2 + 20 + torch.e                           # (N,)
-
-## united version?
-# class Ackley(Function):
-#     def __init__(self):
-#         self.bounds = BOUNDS[self.__class__.__name__]
-
-#     def evaluate(self, x):
-#         """
-#         x: (N, D) or (N, D, C)
-#         returns: (N,)
-#         """
-#         if x.ndim == 2:
-#             dims = (1,)
-#         elif x.ndim == 3:
-#             dims = (1, 2)
-#         else:
-#             raise ValueError(f"Invalid input shape {x.shape}")
-
-#         mean_sq = torch.mean(x**2, dim=dims)
-#         mean_cos = torch.mean(torch.cos(2 * torch.pi * x), dim=dims)
-
-#         term1 = -20 * torch.exp(-0.2 * torch.sqrt(mean_sq))
-#         term2 = -torch.exp(mean_cos)
-
-#         return term1 + term2 + 20 + torch.e
-#     def eval_single(self, x):
-#         # x: (D,) or (D,C)
-#         return self.evaluate(x.unsqueeze(0))[0].item()
 
 # ---------------------------------------------------------
 #  SPHERE

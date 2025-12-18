@@ -1,8 +1,8 @@
 ================================================================================
-Testing function: Ackley (dim=5) using model=fuzzy
+Testing function: Ackley (Solution shape=torch.Size([5, 1])) using model=std
 ================================================================================
 ================================================================================
-ARGS == Namespace(verbose=False, model='fuzzy', nruns=1, niter=400):
+ARGS == Namespace(verbose=True, model='std', nruns=1, niter=100, mode='serial'):
 ================================================================================
 
 --- RUN 1/1 ---
