@@ -1,108 +1,112 @@
-from .func_consts import PROBLEM_BOUNDS, TRUE_PARAMS
+import torch
+import torch.nn as nn
 
-class CalculateReflectance(nn.Module):
-    def __init__(self, params):
-        """
-        params: (N, 2, 2)
-        """
-        super().__init__()
+from .func_consts import PROBLEM_BOUNDS, TRUE_PARAMS, REAL_SOLUTIONS
+from .base import Function   # assuming same base class as LV
 
-        assert isinstance(params, torch.Tensor), \
-            f"params must be torch.Tensor, got {type(params)}"
-        assert params.ndim == 3 and params.shape[1:] == (2, 2), \
-            f"params must have shape (N,2,2), got {params.shape}"
+# class CalculateReflectance(nn.Module):
+#     def __init__(self, params):
+#         """
+#         params: (N, 2, 2)
+#         """
+#         super().__init__()
 
-        self.params = params  # PSO updates externally
+#         assert isinstance(params, torch.Tensor), \
+#             f"params must be torch.Tensor, got {type(params)}"
+#         assert params.ndim == 3 and params.shape[1:] == (2, 2), \
+#             f"params must have shape (N,2,2), got {params.shape}"
 
-    def forward(self, t, state):
-        """
-        state: (N, 2)
-        returns: (N, 2)
-        """
-        assert isinstance(state, torch.Tensor), \
-            f"state must be torch.Tensor, got {type(state)}"
-        assert state.ndim == 2 and state.shape[1] == 2, \
-            f"state must have shape (N,2), got {state.shape}"
+#         self.params = params  # PSO updates externally
 
-        N = self.params.shape[0]
-        assert state.shape[0] == N, \
-            f"state batch size {state.shape[0]} does not match params batch size {N}"
+#     def forward(self, t, state):
+#         """
+#         state: (N, 2)
+#         returns: (N, 2)
+#         """
+#         assert isinstance(state, torch.Tensor), \
+#             f"state must be torch.Tensor, got {type(state)}"
+#         assert state.ndim == 2 and state.shape[1] == 2, \
+#             f"state must have shape (N,2), got {state.shape}"
 
-        bbp = self.params[:, 0]
-        atot = self.params[:, 1]
+#         N = self.params.shape[0]
+#         assert state.shape[0] == N, \
+#             f"state batch size {state.shape[0]} does not match params batch size {N}"
 
-        u_lambda = bbp/(atot + bbp) 
+#         bbp = self.params[:, 0]
+#         atot = self.params[:, 1]
+
+#         u_lambda = bbp/(atot + bbp) 
         
-        g_0 = self.params[:,2]
-        g_1 = self.params[:,3]
+#         g_0 = self.params[:,2]
+#         g_1 = self.params[:,3]
 
-        r_rs = g_0 * u_lambda + g_1 * (u_lambda)**2 
+#         r_rs = g_0 * u_lambda + g_1 * (u_lambda)**2 
         
-        a1 = self.params[:, 4]
-        a2 = self.params[:, 5]
-        a3 = self.params[:, 6]
-        a4 = self.params[:, 7]
-        a5 = self.params[:, 8]
+#         a1 = self.params[:, 4]
+#         a2 = self.params[:, 5]
+#         a3 = self.params[:, 6]
+#         a4 = self.params[:, 7]
+#         a5 = self.params[:, 8]
 
-        chlor_a = a1 + a2*torch.log10(r_rs) + a3*torch.log10(r_rs) + a4*torch.log10(r_rs) + a5*torch.log10(r_rs) # from this paper: https://opg.optica.org/oe/fulltext.cfm?uri=oe-20-19-20920 
-        out = chlor_a
-        assert out.shape == state.shape, \
-            f"ODE output must match state shape {state.shape}, got {out.shape}"
+#         chlor_a = a1 + a2*torch.log10(r_rs) + a3*torch.log10(r_rs) + a4*torch.log10(r_rs) + a5*torch.log10(r_rs) # from this paper: https://opg.optica.org/oe/fulltext.cfm?uri=oe-20-19-20920 
+#         out = chlor_a
+#         assert out.shape == state.shape, \
+#             f"ODE output must match state shape {state.shape}, got {out.shape}"
 
-        return out
+#         return out
 
-def solve_reflectance(params, y0, t):
-    """
-    params: (N, 2, 2)
-    y0: (2,) or (1,2) or (N,2)
-    t: (T,)
-    returns: (T, N, 2)
-    """
-    assert isinstance(params, torch.Tensor), \
-        f"params must be torch.Tensor, got {type(params)}"
-    assert params.ndim == 3 and params.shape[1:] == (2, 2), \
-        f"params must be (N,2,2), got {params.shape}"
+# def solve_reflectance(params, y0, t):
+#     """
+#     params: (N, 2, 2)
+#     y0: (2,) or (1,2) or (N,2)
+#     t: (T,)
+#     returns: (T, N, 2)
+#     """
+#     assert isinstance(params, torch.Tensor), \
+#         f"params must be torch.Tensor, got {type(params)}"
+#     assert params.ndim == 3 and params.shape[1:] == (2, 2), \
+#         f"params must be (N,2,2), got {params.shape}"
 
-    assert isinstance(t, torch.Tensor), \
-        f"t must be torch.Tensor, got {type(t)}"
-    assert t.ndim == 1, \
-        f"t must be 1D tensor (T,), got {t.shape}"
+#     assert isinstance(t, torch.Tensor), \
+#         f"t must be torch.Tensor, got {type(t)}"
+#     assert t.ndim == 1, \
+#         f"t must be 1D tensor (T,), got {t.shape}"
 
-    N = params.shape[0]
+#     N = params.shape[0]
 
-    assert isinstance(y0, torch.Tensor), \
-        f"y0 must be torch.Tensor, got {type(y0)}"
+#     assert isinstance(y0, torch.Tensor), \
+#         f"y0 must be torch.Tensor, got {type(y0)}"
 
-    # --- normalize y0 ---
-    if y0.ndim == 1:
-        assert y0.shape[0] == 2, \
-            f"y0 with ndim=1 must have shape (2,), got {y0.shape}"
-        y0 = y0.unsqueeze(0).expand(N, 2)
+#     # --- normalize y0 ---
+#     if y0.ndim == 1:
+#         assert y0.shape[0] == 2, \
+#             f"y0 with ndim=1 must have shape (2,), got {y0.shape}"
+#         y0 = y0.unsqueeze(0).expand(N, 2)
 
-    elif y0.ndim == 2:
-        assert y0.shape[1] == 2, \
-            f"y0 with ndim=2 must have shape (*,2), got {y0.shape}"
-        if y0.shape[0] == 1:
-            y0 = y0.expand(N, 2)
-        else:
-            assert y0.shape[0] == N, \
-                f"y0 batch size {y0.shape[0]} does not match params batch size {N}"
+#     elif y0.ndim == 2:
+#         assert y0.shape[1] == 2, \
+#             f"y0 with ndim=2 must have shape (*,2), got {y0.shape}"
+#         if y0.shape[0] == 1:
+#             y0 = y0.expand(N, 2)
+#         else:
+#             assert y0.shape[0] == N, \
+#                 f"y0 batch size {y0.shape[0]} does not match params batch size {N}"
 
-    else:
-        raise AssertionError(
-            f"y0 must have shape (2,), (1,2) or (N,2); got {y0.shape}"
-        )
+#     else:
+#         raise AssertionError(
+#             f"y0 must have shape (2,), (1,2) or (N,2); got {y0.shape}"
+#         )
 
-    assert y0.shape == (N, 2), \
-        f"y0 must be normalized to (N,2), got {y0.shape}"
+#     assert y0.shape == (N, 2), \
+#         f"y0 must be normalized to (N,2), got {y0.shape}"
 
-    ode_func = CalculateReflectance(params)
-    sol = odeint(ode_func, y0, t)
+#     ode_func = CalculateReflectance(params)
+#     sol = odeint(ode_func, y0, t)
 
-    assert sol.ndim == 3 and sol.shape == (t.shape[0], N, 2), \
-        f"solution must be (T,N,2), got {sol.shape}"
+#     assert sol.ndim == 3 and sol.shape == (t.shape[0], N, 2), \
+#         f"solution must be (T,N,2), got {sol.shape}"
 
-    return sol
+#     return sol
 
 # class solve_reflectance(Function):
 
@@ -121,58 +125,191 @@ def solve_reflectance(params, y0, t):
 #         out = pred - gt 
 #         return out.squeeze()
 
+# def reflectance_fitness(params, ground_truth):
+#     """
+#     params: (N, 2, 2)
+#     ground_truth: (T, 2)
+#     returns: (N,)
+#     """
+#     assert isinstance(ground_truth, torch.Tensor), \
+#         f"ground_truth must be torch.Tensor, got {type(ground_truth)}"
+#     assert ground_truth.ndim == 2 and ground_truth.shape[1] == 2, \
+#         f"ground_truth must be (T,2), got {ground_truth.shape}"
+
+#     sol = solve_reflectance(params, t)  # (T, N, 2)
+
+#     T, N, _ = sol.shape
+#     assert ground_truth.shape[0] == T, \
+#         f"ground_truth length {ground_truth.shape[0]} does not match solution time {T}"
+
+#     gt = ground_truth[:, None, :]  # (T,1,2)
+
+#     mse = torch.mean((sol - gt) ** 2, dim=(0, 2))  # (N,)
+
+#     assert mse.shape == (N,), \
+#         f"fitness must be (N,), got {mse.shape}"
+#     return mse, sol
+
+# class Reflectance(Function):
+
+#     def __init__(self, ground_truth=None, real_params=None):
+#         self.name = self.__class__.__name__
+#         self.bounds = PROBLEM_BOUNDS[self.name]
+#         gt = REAL_SOLUTIONS[self.name]
+
+#         self.ground_truth = (
+#             ground_truth if ground_truth is not None
+#             else gt[:, 0, :] 
+#         )
+
+#         print("GROUND TRUTH:", self.ground_truth)
+#         self.real_params = (
+#             real_params if real_params is not None
+#             else TRUE_PARAMS[self.name]
+#         )
+
+#         # self.initial_conditions = self.ground_truth[0].unsqueeze(0)
+#         self.initial_conditions = self.ground_truth[0]
+#         print("SHAPE OF INITIAL CONDITION:", self.initial_conditions)
+#         self.chlor_a_hat = None
+
+#     def evaluate(self, params):
+#         fit, self.chlor_a_hat = reflectance_fitness(
+#             params=params,
+#             y0=self.initial_conditions,
+#             ground_truth=self.ground_truth
+#         )
+#         return fit 
+
+class CalculateReflectance(nn.Module):
+    """
+    Static forward model:
+        params (N,9) -> chlor_a_hat (N,)
+    """
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, params):
+        """
+        params: (N, 9)
+        returns: (N,)
+        """
+
+        # -------- type & shape checks --------
+        assert isinstance(params, torch.Tensor), \
+            f"params must be torch.Tensor, got {type(params)}"
+        assert params.ndim == 2 and params.shape[1] == 9, \
+            f"params must have shape (N,9), got {params.shape}"
+
+        # -------- unpack parameters --------
+        bbp  = params[:, 0]
+        atot = params[:, 1]
+
+        g0 = params[:, 2]
+        g1 = params[:, 3]
+
+        a1 = params[:, 4]
+        a2 = params[:, 5]
+        a3 = params[:, 6]
+        a4 = params[:, 7]
+        a5 = params[:, 8]
+
+        # -------- physical constraints --------
+        assert torch.all(bbp > 0),  "bbp must be > 0"
+        assert torch.all(atot > 0), "atot must be > 0"
+
+        # -------- reflectance model --------
+        u_lambda = bbp / (atot + bbp)
+
+        r_rs = g0 * u_lambda + g1 * u_lambda**2
+
+        assert torch.all(r_rs > 0), \
+            "r_rs must be positive to apply log10"
+
+        log_r = torch.log10(r_rs)
+
+        # -------- OCx polynomial --------
+        chlor_a_hat = (
+            a1
+            + a2 * log_r
+            + a3 * log_r**2
+            + a4 * log_r**3
+            + a5 * log_r**4
+        )
+
+        assert chlor_a_hat.ndim == 1 and chlor_a_hat.shape[0] == params.shape[0], \
+            f"output must be (N,), got {chlor_a_hat.shape}"
+
+        return chlor_a_hat
+
 def reflectance_fitness(params, ground_truth):
     """
-    params: (N, 2, 2)
-    ground_truth: (T, 2)
+    params: (N,9)
+    ground_truth: (N,) or scalar
     returns: (N,)
     """
+
+    # -------- checks --------
     assert isinstance(ground_truth, torch.Tensor), \
         f"ground_truth must be torch.Tensor, got {type(ground_truth)}"
-    assert ground_truth.ndim == 2 and ground_truth.shape[1] == 2, \
-        f"ground_truth must be (T,2), got {ground_truth.shape}"
 
-    sol = solve_reflectance(params, t)  # (T, N, 2)
+    if ground_truth.ndim == 0:
+        ground_truth = ground_truth.expand(params.shape[0])
 
-    T, N, _ = sol.shape
-    assert ground_truth.shape[0] == T, \
-        f"ground_truth length {ground_truth.shape[0]} does not match solution time {T}"
+    assert ground_truth.ndim == 1, \
+        f"ground_truth must be (N,), got {ground_truth.shape}"
 
-    gt = ground_truth[:, None, :]  # (T,1,2)
+    assert params.shape[0] == ground_truth.shape[0], \
+            f"params and ground_truth batch size mismatch: {params.shape} != {ground_truth.shape}"
 
-    mse = torch.mean((sol - gt) ** 2, dim=(0, 2))  # (N,)
+    model = CalculateReflectance()
+    chlor_a_hat = model(params)
 
-    assert mse.shape == (N,), \
+    # -------- MSE per particle --------
+    mse = (chlor_a_hat - ground_truth)**2
+
+    assert mse.shape == (params.shape[0],), \
         f"fitness must be (N,), got {mse.shape}"
-    return mse, sol
+
+    return mse, chlor_a_hat
 
 class Reflectance(Function):
+    """
+    PSO-compatible reflectance inversion problem
+    """
 
     def __init__(self, ground_truth=None, real_params=None):
         self.name = self.__class__.__name__
         self.bounds = PROBLEM_BOUNDS[self.name]
-        gt = REAL_SOLUTIONS[self.name]
 
         self.ground_truth = (
-            ground_truth if ground_truth is not None
-            else gt[:, 0, :] 
+            ground_truth
+            if ground_truth is not None
+            else REAL_SOLUTIONS[self.name]
         )
 
-        print("GROUND TRUTH:", self.ground_truth)
-        self.real_params = (
-            real_params if real_params is not None
-            else TRUE_PARAMS[self.name]
-        )
+        assert isinstance(self.ground_truth, torch.Tensor), \
+            "ground_truth must be torch.Tensor"
 
-        # self.initial_conditions = self.ground_truth[0].unsqueeze(0)
-        self.initial_conditions = self.ground_truth[0]
-        print("SHAPE OF INITIAL CONDITION:", self.initial_conditions)
+        # self.real_params = (
+        #     real_params
+        #     if real_params is not None
+        #     else TRUE_PARAMS[self.name]["params"]
+        # )
+
         self.chlor_a_hat = None
 
     def evaluate(self, params):
-        fit, self.chlor_a_hat = reflectance_fitness(
+        """
+        params: (N,9)
+        returns: (N,)
+        """
+
+        fitness, self.chlor_a_hat = reflectance_fitness(
             params=params,
-            y0=self.initial_conditions,
             ground_truth=self.ground_truth
         )
-        return fit 
+
+        return fitness
+

@@ -10,6 +10,7 @@ print("Built with CUDA:", torch.version.cuda)
 from torchswarm.swarmoptimizer.SO import SwarmOptimizer
 from torchswarm.swarmoptimizer.FSO import FuzzySwarmOptimizer
 from torchswarm.swarmoptimizer.ParallelSO import ParallelSwarmOptimizer
+from torchswarm.swarmoptimizer.ParallelFSO import ParallelFuzzySwarmOptimizer
 
 from consts import TRUE_OPTIMA
 from cli import get_args
@@ -94,12 +95,14 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
                     verbose=VERBOSE,
                 )
             elif MODEL == "fuzzy": 
-                raise NotImplementedError
-                # opt = FuzzySwarmOptimizer(
-                #     sol_shape,
-                #     swarm_optimizer_type="fuzzy",
-                #     max_iterations=NITER,
-                # )
+                opt = ParallelFuzzySwarmOptimizer(
+                    sol_shape,
+                    swarm_size=100, # should be determined automatically actually
+                    fitness_function = func_class(),
+                    swarm_optimizer_type="standard",
+                    max_iterations=NITER,
+                    verbose=VERBOSE,
+                )
             else:
                 print("Unrecognized model passed!")
                 raise ValueError

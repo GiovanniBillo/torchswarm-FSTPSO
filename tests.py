@@ -32,7 +32,9 @@ from torchswarm.functions.benchmarks_parallel import (
     # Vincent,
     # XinSheYang,
 )
+
 from torchswarm.functions.lotka_volterra import LotkaVolterra
+from torchswarm.functions.reflectance import Reflectance
 
 from test_utils import run_test
 
@@ -43,6 +45,8 @@ if __name__ == "__main__":
     benchmark_shape = torch.Size([5, 1])
     benchmark_shape_special = torch.Size([2, 1])
     LV_shape = torch.Size([2, 2])
+
+    reflectance_shape = torch.Size([9, 1])
     # Functions supporting ANY dimension
 
     run_test(Ackley, sol_shape=benchmark_shape)
@@ -64,4 +68,7 @@ if __name__ == "__main__":
     # run_test(Shubert, dim=2)
 
     # LotkaVolterra
-    run_test(LotkaVolterra, sol_shape=LV_shape)
+    # run_test(LotkaVolterra, sol_shape=LV_shape)
+
+    # Reflectance Problem
+    run_test(Reflectance, sol_shape=reflectance_shape)

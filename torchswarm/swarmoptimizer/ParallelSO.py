@@ -57,13 +57,160 @@ class Ackley(Function):
         term2 = -torch.exp(mean_cos)
         return term1 + term2 + 20 + torch.e                           # (N,)
 
+def _normalize_bounds(bounds, dim=None, device=None, dtype=torch.float32):
+    """
+    Normalize bounds into (lower, upper, keys).
+
+    Supports:
+      - tuple (low, high)
+      - dict[str, (low, high)]
+
+    Returns:
+      lower: (D,) tensor
+      upper: (D,) tensor
+      keys:  list[str]
+    """
+
+    # -------------------------
+    # Case 1: scalar tuple
+    # -------------------------
+    if isinstance(bounds, tuple):
+        assert len(bounds) == 2, \
+            f"tuple bounds must be (low, high), got {bounds}"
+
+        assert dim is not None, \
+            "dim must be provided when bounds is a tuple"
+
+        low, high = bounds
+
+        keys = [f"x{i}" for i in range(dim)]
+        lower = torch.full((dim,), low, device=device, dtype=dtype)
+        upper = torch.full((dim,), high, device=device, dtype=dtype)
+
+    # -------------------------
+    # Case 2: dict of tuples
+    # -------------------------
+    elif isinstance(bounds, dict):
+        keys = list(bounds.keys())
+
+        lower = torch.tensor(
+            [bounds[k][0] for k in keys],
+            device=device, dtype=dtype
+        )
+        upper = torch.tensor(
+            [bounds[k][1] for k in keys],
+            device=device, dtype=dtype
+        )
+
+    else:
+        raise TypeError(
+            f"bounds must be tuple or dict, got {type(bounds)}"
+        )
+
+    # -------------------------
+    # Sanity checks
+    # -------------------------
+    assert lower.shape == upper.shape, "lower/upper shape mismatch"
+    assert torch.all(lower < upper), "each lower bound must be < upper bound"
+
+    return lower, upper, keys
 
 class ParallelSwarmOptimizer:
+    # def init_swarm(self, bounds, swarm_size, dim=None, classes=None, device=None, dtype=torch.float32):
+    #     """
+    #     Initialize swarm positions with flexible bounds.
+
+    #     bounds: tuple OR dict[str, tuple]
+    #     N: number of particles
+    #     dim: required only if bounds is tuple
+
+    #     returns:
+    #         params: (N, D)
+    #         keys: list[str]
+    #     """
+
+    #     lower, upper, keys = _normalize_bounds(
+    #         bounds=bounds,
+    #         dim=dim,
+    #         device=device,
+    #         dtype=dtype
+    #     )
+
+    #     D = lower.numel()
+    #     C =  classes 
+    #     self.swarm = lower + torch.rand((swarm_size, D, C), device=device, dtype=dtype) * (upper - lower)
+
+    #     assert self.swarm.shape == (swarm_size, D, C), f"AssertionError: swarm should be of shape {swarm_size, D, C} but is {self.swarm.shape}"
+
+    #     return 
+    def init_swarm(self,
+        bounds,
+        swarm_size: int,
+        dim: int | None = None,
+        classes: int = 1,
+        device=None,
+        dtype=torch.float32,
+    ):
+        """
+        Initialize swarm positions.
+
+        Returns:
+            params: (N, D, C)
+            keys:   list[str] (length D)
+        """
+
+        # ---------------------------------
+        # Normalize bounds
+        # ---------------------------------
+        lower, upper, keys = _normalize_bounds(
+            bounds=bounds,
+            dim=dim,
+            device=device,
+            dtype=dtype
+        )
+
+        D = lower.numel()
+        N = swarm_size
+        C = classes
+
+        # ---------------------------------
+        # Vectorized initialization
+        # ---------------------------------
+        # rand: (N, D, C)
+        rand = torch.rand((N, D, C), device=device, dtype=dtype)
+
+        # reshape bounds for broadcasting
+        lower = lower.view(1, D, 1)
+        upper = upper.view(1, D, 1)
+
+        self.swarm = lower + rand * (upper - lower)
+
+        # ---------------------------------
+        # Sanity checks
+        # ---------------------------------
+        assert self.swarm.shape == (N, D, C), \
+            f"params must be (N,D,C), got {params.shape}"
+
+        # return params, keys
+        return
+
+    def _init_swarm(self):
+        return self.init_swarm(bounds=self.bounds, swarm_size=self.swarm_size, dim=self.dimensions, classes=self.classes, device=self.device)
+
+    def _init_vel(self):
+        '''
+        utility to reset velocity in derived classes
+        '''
+        self.swarm_velocities = torch.zeros(
+            (self.swarm_size, self.dimensions, self.classes), device=self.device
+        )
+        return
+
     def __init__(self, sol_shape, swarm_size, fitness_function, swarm_optimizer_type="standard", particle=None, verbose=False, **kwargs):
         self.swarm_size = swarm_size
         self.max_iterations = kwargs.get('max_iterations') if kwargs.get('max_iterations') else 100
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        device = kwargs.get("device") if kwargs.get("device") else device
+        self.device = kwargs.get("device") if kwargs.get("device") else device
         self.fitness_function = fitness_function
         self.bounds = fitness_function.bounds
         # A sol_shape parameter would probably be more coincise than dimensions and classes
@@ -76,18 +223,25 @@ class ParallelSwarmOptimizer:
         self.classes = sol_shape[1] 
         self.verbose=verbose
         self.name = self.__class__.__name__
+        self.swarm = None
+        self.swarm_velocities = None
 
-        self.swarm = torch.empty(
-            (self.swarm_size, self.dimensions, self.classes), device=device
-        ).uniform_(self.bounds[0], self.bounds[1])
+        # self.swarm = torch.empty(
+        #     (self.swarm_size, self.dimensions, self.classes), device=device
+        # ).uniform_(self.bounds[0], self.bounds[1])
 
-        self.swarm_velocities = torch.zeros(
-            (self.swarm_size, self.dimensions, self.classes), device=device
-        )
+        self._init_swarm()
+        self._init_vel() 
+
 
         self.inertia = 0.9 
         self.social = 1.5 
         self.cognitive = 1.5 
+
+        self.w = torch.full((self.swarm_size,), self.inertia)
+        self.c_soc = torch.full((self.swarm_size,), self.social)
+        self.c_cog = torch.full((self.swarm_size,), self.cognitive)
+
         # optima initialization
         self.local_best_values = torch.full(
             (self.swarm_size,), float("inf"), device=self.swarm.device
@@ -102,6 +256,13 @@ class ParallelSwarmOptimizer:
     
     def optimize(self, function):
         pass
+
+    def update_hyperparameters(self, iteration):
+        '''
+        Hook for subclasses.
+        Does nothing for standard static hyperparameters.
+        '''
+        return
 
     # NB: it's normal that PSO is slower to convergence with the same number of iterations: it's due to the parallel implementation happening synchronously.  
 
@@ -158,10 +319,19 @@ class ParallelSwarmOptimizer:
             assert self.swarm.device == self.local_best_positions.device == self.local_best_values.device, \
                 "swarm and best tensors must be on same device"
             
+            ## serial form
+            # self.swarm_velocities = (
+            #     self.inertia * self.swarm_velocities
+            #     + r1 * self.cognitive * (self.local_best_positions - self.swarm)
+            #     + r2 * self.social * (self.global_best_position - self.swarm)
+            # )
+
+
+            ## vectorized form
             self.swarm_velocities = (
-                self.inertia * self.swarm_velocities
-                + r1 * self.cognitive * (self.local_best_positions - self.swarm)
-                + r2 * self.social * (self.global_best_position - self.swarm)
+                self.w[:, None, None] * self.swarm_velocities
+                + r1 * self.c_cog[:, None, None] * (self.local_best_positions - self.swarm)
+                + r2 * self.c_soc[:, None, None] * (self.global_best_position - self.swarm)
             )
 
             ## possible extension: also clamp max velocities
@@ -170,6 +340,10 @@ class ParallelSwarmOptimizer:
             # move
             self.swarm = self.swarm + self.swarm_velocities
             self.swarm = torch.clamp(self.swarm, self.bounds[0], self.bounds[1])
+           
+
+            # hyperparameter update(static for Standard Swarm Optimizer, useful for subclasses)
+            self.update_hyperparameters(i)
 
             toc = time.monotonic()
             print('Iteration {:.0f} >> global best fitness {:.3f}  | iteration time {:.3f}'.format(i + 1, self.global_best_value.item(), toc - tic))
