@@ -3,11 +3,50 @@ import math
 from torchswarm.swarmoptimizer.ParallelSO import ParallelSwarmOptimizer
 from FRBS import Frbs
 
+def calculate_delta_max(bounds, dim, device=None, dtype=None):
+    """
+    Compute delta_max for FST-PSO.
+
+    bounds:
+        - tuple: (low, high)
+        - dict:  {name: (low, high)}
+
+    dim:
+        number of dimensions (D)
+
+    returns:
+        scalar float delta_max
+    """
+
+    if isinstance(bounds, tuple):
+        low, high = bounds
+        delta = torch.full((dim,), high - low, device=device, dtype=dtype)
+
+    elif isinstance(bounds, dict):
+        assert len(bounds) == dim, \
+            f"bounds dict length {len(bounds)} != dim {dim}"
+
+        delta = torch.tensor(
+            [hi - lo for (lo, hi) in bounds.values()],
+            device=device,
+            dtype=dtype
+        )
+
+    else:
+        raise TypeError(
+            f"bounds must be tuple or dict, got {type(bounds)}"
+        )
+
+    assert torch.all(delta > 0), "All bounds must have positive width"
+
+    # Euclidean diameter of the box
+    return torch.sqrt(torch.sum(delta ** 2)).item()
+
 class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self.delta_max = self.calculate_delta_max(self.bounds)
+        
+        self.delta_max = self._calculate_delta_max(self.bounds)
         self.frbs = Frbs(self.delta_max, verbose=self.verbose)
 
         # N = self.swarm_size
@@ -22,13 +61,14 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
         self.w     = torch.full((self.swarm_size,), self.inertia, device=device)
         self.c_soc = torch.full((self.swarm_size,), self.social, device=device)
         self.c_cog = torch.full((self.swarm_size,), self.cognitive, device=device)
-
+        
         self.prev_swarm = None
         self.prev_local_best_values = None
         self.f_triangle = torch.tensor(float("inf"), device=device)
 
-    def calculate_delta_max(self, bounds):
-        return math.sqrt(self.dimensions * (bounds[1] - bounds[0])**2)
+    def _calculate_delta_max(self, bounds):
+        return calculate_delta_max(self.bounds, self.dimensions, device=self.device, dtype=torch.float32)
+        # return math.sqrt(self.dimensions * (bounds[1] - bounds[0])**2)
 
     def compute_delta(self, i):
         diff = self.swarm[i] - self.prev_swarm[i]

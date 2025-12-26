@@ -97,7 +97,7 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
             elif MODEL == "fuzzy": 
                 opt = ParallelFuzzySwarmOptimizer(
                     sol_shape,
-                    swarm_size=100, # should be determined automatically actually
+                    swarm_size=200, # should be determined automatically actually
                     fitness_function = func_class(),
                     swarm_optimizer_type="standard",
                     max_iterations=NITER,

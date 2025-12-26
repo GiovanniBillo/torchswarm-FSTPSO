@@ -57,6 +57,88 @@ class Ackley(Function):
         term2 = -torch.exp(mean_cos)
         return term1 + term2 + 20 + torch.e                           # (N,)
 
+def normalize_bounds(bounds, dim, device=None, dtype=None):
+    """
+    Normalize bounds into (lower, upper) tensors of shape (dim,).
+
+    bounds:
+        - tuple: (low, high)
+        - dict:  {name: (low, high)}
+
+    returns:
+        lower: (dim,)
+        upper: (dim,)
+    """
+
+    if isinstance(bounds, tuple):
+        low, high = bounds
+        lower = torch.full((dim,), low, device=device, dtype=dtype)
+        upper = torch.full((dim,), high, device=device, dtype=dtype)
+
+    elif isinstance(bounds, dict):
+        assert len(bounds) == dim, \
+            f"bounds dict length {len(bounds)} != dim {dim}"
+
+        lower = []
+        upper = []
+        for key, (lo, hi) in bounds.items():
+            lower.append(lo)
+            upper.append(hi)
+
+        lower = torch.tensor(lower, device=device, dtype=dtype)
+        upper = torch.tensor(upper, device=device, dtype=dtype)
+
+    else:
+        raise TypeError(
+            f"bounds must be tuple or dict, got {type(bounds)}"
+        )
+
+    assert lower.shape == (dim,)
+    assert upper.shape == (dim,)
+    assert torch.all(lower < upper)
+
+    return lower, upper
+
+def clamp_with_bounds(swarm, bounds):
+    """
+    Clamp swarm tensor using bounds.
+
+    swarm:
+        (N, D) or (N, D, C)
+
+    bounds:
+        tuple or dict
+
+    returns:
+        clamped swarm (same shape)
+    """
+
+    assert swarm.ndim in (2, 3), \
+        f"swarm must be 2D or 3D, got {swarm.shape}"
+
+    device = swarm.device
+    dtype = swarm.dtype
+    D = swarm.shape[1]
+
+    lower, upper = normalize_bounds(bounds, D, device, dtype)
+
+    if swarm.ndim == 2:
+        # (N, D)
+        return torch.max(
+            torch.min(swarm, upper),
+            lower
+        )
+
+    else:
+        # (N, D, C)
+        lower = lower.view(1, D, 1)
+        upper = upper.view(1, D, 1)
+
+        return torch.max(
+            torch.min(swarm, upper),
+            lower
+        )
+
 def _normalize_bounds(bounds, dim=None, device=None, dtype=torch.float32):
     """
     Normalize bounds into (lower, upper, keys).
@@ -172,7 +254,7 @@ class ParallelSwarmOptimizer:
         D = lower.numel()
         N = swarm_size
         C = classes
-
+        print(f"DIMENSIONS INITIALIZED:{D}")
         # ---------------------------------
         # Vectorized initialization
         # ---------------------------------
@@ -339,8 +421,8 @@ class ParallelSwarmOptimizer:
 
             # move
             self.swarm = self.swarm + self.swarm_velocities
-            self.swarm = torch.clamp(self.swarm, self.bounds[0], self.bounds[1])
-           
+            # self.swarm = torch.clamp(self.swarm, self.bounds[0], self.bounds[1])
+            self.swarm = clamp_with_bounds(self.swarm, self.bounds) 
 
             # hyperparameter update(static for Standard Swarm Optimizer, useful for subclasses)
             self.update_hyperparameters(i)
