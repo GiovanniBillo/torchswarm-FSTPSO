@@ -35,10 +35,12 @@ def get_args():
         default=100,
         help="Number of iterations per run"
     )
+    # TODO: if we are to keep the serial version for understanding and didactic purposes, we need to find a way to adapt the functions to be flexible for input.
+    # as of now, the function is throwing an error for tensor reasons  
     parser.add_argument(
         "--mode",
         type=str,
-        default="serial",
+        default="parallel",
         help="version of the algorithm to be used"
     )
 

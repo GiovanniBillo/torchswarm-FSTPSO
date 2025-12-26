@@ -32,7 +32,7 @@ from torchswarm.functions.benchmarks_parallel import (
     # Vincent,
     # XinSheYang,
 )
-from torchswarm.functions.misc_parallel import LotkaVolterra
+from torchswarm.functions.lotka_volterra import LotkaVolterra
 
 from test_utils import run_test
 

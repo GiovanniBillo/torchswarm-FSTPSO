@@ -17,12 +17,13 @@ TRUE_PARAMS={"LotkaVolterra": torch.Tensor([[0.1, 0.02],[0.01, 0.1]]).unsqueeze(
 # initial_conditions = torch.Tensor([30, 10]).unsqueeze(0)
 initial_conditions = torch.Tensor([30, 10])
 
-solution = solve_lotka_volterra(TRUE_PARAMS['LotkaVolterra'], initial_conditions, t) 
+# solution = solve_lotka_volterra(TRUE_PARAMS['LotkaVolterra'], initial_conditions, t) 
 
+lv_solution_placeholder = None
 esa_data = np.load(NPZ_PATH) 
-solution_inverse_chlor_a = data['chlor_a'] 
+solution_inverse_chlor_a = esa_data['chlor_a'] 
 
-REAL_SOLUTIONS = {"LotkaVolterra": solution, 
+REAL_SOLUTIONS = {"LotkaVolterra": lv_solution_placeholder, 
                   "Reflectance": solution_inverse_chlor_a
                   } 
 if __name__=="__main__":

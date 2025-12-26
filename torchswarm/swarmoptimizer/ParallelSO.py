@@ -112,7 +112,6 @@ class ParallelSwarmOptimizer:
             r2 = torch.rand_like(self.swarm_velocities)
 
             current_fitness = self.fitness_function.evaluate(self.swarm)
-            print("CURRENT_FITNESS:", current_fitness)
             # update local best
             assert current_fitness.shape == (self.swarm_size,), \
                 f"fitness must be (N,), got {current_fitness.shape}"
