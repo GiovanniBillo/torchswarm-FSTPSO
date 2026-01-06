@@ -297,7 +297,8 @@ class ParallelSwarmOptimizer:
         self.bounds = fitness_function.bounds
         # A sol_shape parameter would probably be more coincise than dimensions and classes
 
-        self.seed = torch.manual_seed(kwargs.get("seed")) if kwargs.get("seed") else 0 
+        # self.seed = torch.manual_seed(kwargs.get("seed")) if kwargs.get("seed") else 0 
+        self.seed = torch.manual_seed(kwargs.get("seed")) if kwargs.get("seed") else torch.randint(100, (1,)).item() # ensures randomization between runs 
         torch.manual_seed(self.seed)
 
         self.sol_shape = sol_shape 

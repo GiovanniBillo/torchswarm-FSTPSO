@@ -25,7 +25,7 @@ def get_args():
     parser.add_argument(
         "--nruns",
         type=int,
-        default=5,
+        default=1,
         help="Number of runs to perform for each benchmark function"
     )
 

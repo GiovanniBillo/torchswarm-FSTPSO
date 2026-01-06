@@ -71,5 +71,5 @@ if __name__ == "__main__":
     # run_test(Shubert, dim=2)
 
     # LotkaVolterra
-    # run_test(LotkaVolterra, sol_shape=LV_shape)
+    run_test(LotkaVolterra, sol_shape=LV_shape)
 
