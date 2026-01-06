@@ -32,7 +32,7 @@ print(ds)
 # 2. Select variables of interest
 # ------------------------------------------------------
 
-subset = ds[["Rrs_412", "atot_412", "chlor_a"]].isel(time=TIME_INDEX)
+subset = ds[["Rrs_412", "atot_412","bbp_412", "chlor_a"]].isel(time=TIME_INDEX)
 
 # ------------------------------------------------------
 # 3. Convert to NumPy arrays
@@ -40,6 +40,7 @@ subset = ds[["Rrs_412", "atot_412", "chlor_a"]].isel(time=TIME_INDEX)
 
 rrs_arr = subset["Rrs_412"].values
 atot_arr = subset["atot_412"].values
+bbp_arr = subset["bbp_412"].values
 chlor_a_arr = subset["chlor_a"].values
 
 # ------------------------------------------------------
@@ -52,6 +53,7 @@ valid_mask = (
     np.isfinite(chlor_a_arr) &
     (rrs_arr > 0) &
     (atot_arr > 0) &
+    (bbp_arr > 0) &
     (chlor_a_arr > 0)
 )
 
@@ -65,6 +67,7 @@ print("Valid pixels:", np.count_nonzero(valid_mask))
 
 valid_rrs = rrs_arr[valid_mask]
 valid_atot = atot_arr[valid_mask]
+valid_bbp = atot_arr[valid_mask]
 valid_chlor_a = chlor_a_arr[valid_mask]
 
 # ------------------------------------------------------
@@ -90,6 +93,7 @@ print("\n================ FINAL DATASET ================\n")
 print("Samples:", len(valid_rrs))
 print("Rrs_412 range:", valid_rrs.min(), "→", valid_rrs.max())
 print("atot_412 range:", valid_atot.min(), "→", valid_atot.max())
+print("bbp_412 range:", valid_bbp.min(), "→", valid_bbp.max())
 print("chlor_a range:", valid_chlor_a.min(), "→", valid_chlor_a.max())
 
 # ------------------------------------------------------
@@ -100,6 +104,7 @@ np.savez_compressed(
     NPZ_OUTPUT,
     rrs_412=valid_rrs,
     atot_412=valid_atot,
+    bbp_412=valid_bbp,
     chlor_a=valid_chlor_a,
     lat=valid_lat,
     lon=valid_lon,
@@ -109,31 +114,3 @@ np.savez_compressed(
 )
 
 print(f"\nSaved NumPy dataset to: {NPZ_OUTPUT}")
-
-# ------------------------------------------------------
-# 9. Save CSV (for inspection)
-# ------------------------------------------------------
-
-# with open(CSV_OUTPUT, "w", newline="") as f:
-#     writer = csv.writer(f)
-#     writer.writerow(["lat", "lon", "Rrs_412", "atot_412", "chlor_a"])
-
-#     for i in range(len(valid_rrs)):
-#         writer.writerow([
-#             valid_lat[i],
-#             valid_lon[i],
-#             valid_rrs[i],
-#             valid_atot[i],
-#             valid_chlor_a[i],
-#         ])
-
-# with open(VAR_BOUNDS_OUTPUT, "w", newline="") as f:
-#     writer = csv.writer(f)
-#     writer.writerow(["Rrs_412_min", "Rrs_412_min", "atot_412_min", "atot_412_min", "chlor_a_min", "chlor_a_max"])
-#     writer.writerow(valid_rrs.min(), valid_rrs.max(),
-#                     valid_atot.min(), valid_atot.max(),
-#                     valid_chlor_a.min(), valid_chlor_a.max()) 
-
-# print(f"Saved CSV dataset to: {CSV_OUTPUT}")
-# print(f"Saved VAR BOUNDS CSV to: {VAR_BOUNDS_OUTPUT}")
-

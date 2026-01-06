@@ -5,14 +5,6 @@ import numpy as np
 
 URL = "https://data.ceda.ac.uk/.../ESACCI-OC-L3S-OC_PRODUCTS-....nc"
 
-# chl_gt = get_chlorophyll_gt(
-#     URL,
-#     lat=45.39,
-#     lon=13.34,
-#     side=1.0
-# )
-import numpy as np
-
 def get_bounds(npz_path, columns=None, verbose=True):
     """
     Load a .npz dataset and compute min/max bounds for selected columns.
@@ -47,7 +39,7 @@ def get_bounds(npz_path, columns=None, verbose=True):
     bounds = {}
 
     if verbose:
-        print("\n================ FINAL DATASET ================\n")
+        print("\n================ FINAL DATASET (Chlorophyll-a) ================\n")
         print("Samples:", len(data[columns[0]]))
 
     for col in columns:

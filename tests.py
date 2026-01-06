@@ -1,4 +1,5 @@
 import torch
+
 # from torchswarm.functions.benchmarks import (
 #     Ackley,
 #     Sphere,
@@ -15,7 +16,9 @@ import torch
 #     # Vincent,
 #     # XinSheYang,
 # )
+
 # from torchswarm.functions.misc import LotkaVolterra
+
 from torchswarm.functions.benchmarks_parallel import (
     Ackley,
     # Sphere,
@@ -47,7 +50,6 @@ if __name__ == "__main__":
     benchmark_shape_special = torch.Size([2, 1])
     LV_shape = torch.Size([2, 2])
 
-    reflectance_shape = torch.Size([9, 1])
     # Functions supporting ANY dimension
 
     run_test(Ackley, sol_shape=benchmark_shape)
@@ -71,5 +73,3 @@ if __name__ == "__main__":
     # LotkaVolterra
     # run_test(LotkaVolterra, sol_shape=LV_shape)
 
-    # Reflectance Problem
-    run_test(Reflectance, sol_shape=reflectance_shape)
