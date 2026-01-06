@@ -53,7 +53,8 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
     log(header)
     log(args)
 
-    ABF = 0 
+    ABF = 0 # average best fitness
+    ABP = torch.zeros(sol_shape) # average best position
     for run in range(1, NRUNS + 1):
         log(f"\n--- RUN {run}/{NRUNS} ---")
         if MODE == "serial": 
@@ -68,7 +69,7 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
                 )
             elif MODEL == "fuzzy": 
                 opt = FuzzySwarmOptimizer(
-                    sol_shape,
+                    sol_shape=sol_shape,
                     swarm_optimizer_type="fuzzy",
                     max_iterations=NITER,
                 )
@@ -90,16 +91,14 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
                     sol_shape,
                     swarm_size=100,
                     fitness_function = func_class(),
-                    swarm_optimizer_type="standard",
                     max_iterations=NITER,
                     verbose=VERBOSE,
                 )
             elif MODEL == "fuzzy": 
                 opt = ParallelFuzzySwarmOptimizer(
-                    sol_shape,
-                    swarm_size=200, # should be determined automatically actually
+                    sol_shape=sol_shape,
+                    # swarm_size=100,
                     fitness_function = func_class(),
-                    swarm_optimizer_type="standard",
                     max_iterations=NITER,
                     verbose=VERBOSE,
                 )
@@ -112,8 +111,10 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
         
         # accumulate for average
         ABF += best_val
+        ABP += best_pos 
 
         best_pos = best_pos.tolist() if hasattr(best_pos, 'tolist') else list(best_pos)
+
 
         # log to text files
         log(f"Best fitness in run {run}: {best_val}")
@@ -124,7 +125,7 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
     ABF /= NRUNS
 
 
-    log(f"{'-'*80}\nFinished {name}. Average Best Value: {ABF}\n{'-'*80}")
+    log(f"{'-'*80}\nFinished {name}. Average Best Value: {ABF}\n{'-'*80} Average Best Position: {ABP}\n{'-'*80}")
     build_master_table(filename)
     print(f"FInal results saved at {filename}.") 
 

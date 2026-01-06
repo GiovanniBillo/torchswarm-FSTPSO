@@ -38,8 +38,6 @@ from torchswarm.functions.benchmarks_parallel import (
 
 from torchswarm.functions.lotka_volterra import LotkaVolterra
 # from torchswarm.functions.reflectance import Reflectance
-from torchswarm.functions.reflectance_correct import Reflectance
-
 from test_utils import run_test
 
 # MAIN

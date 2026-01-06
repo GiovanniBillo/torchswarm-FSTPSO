@@ -288,7 +288,7 @@ class ParallelSwarmOptimizer:
         )
         return
 
-    def __init__(self, sol_shape, swarm_size, fitness_function, swarm_optimizer_type="standard", particle=None, verbose=False, **kwargs):
+    def __init__(self, sol_shape, fitness_function, swarm_size=100, particle=None, verbose=False, **kwargs):
         self.swarm_size = swarm_size
         self.max_iterations = kwargs.get('max_iterations') if kwargs.get('max_iterations') else 100
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -456,14 +456,12 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
                 sol_shape,
                 swarm_size=100,
                 fitness_function = func_class(),
-                swarm_optimizer_type="standard",
                 max_iterations=NITER,
                 verbose=VERBOSE,
             )
         elif MODEL == "fuzzy": 
             opt = FuzzySwarmOptimizer(
                 sol_shape,
-                swarm_optimizer_type="fuzzy",
                 max_iterations=NITER,
             )
         else:

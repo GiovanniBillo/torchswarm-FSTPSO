@@ -97,9 +97,10 @@ def load_npz_as_torch(
 # -----------------------------
 # Load everything + make a batch
 # -----------------------------
+batch_size = 5000 
 full_cols, batch_cols, idx, M = load_npz_as_torch(
     NPZ_PATH,
-    batch_size=20_000,
+    batch_size=batch_size,
     device="cpu",
     dtype=torch.float32,
     exclude_keys={"time_index"},  # add if present

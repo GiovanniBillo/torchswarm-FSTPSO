@@ -43,15 +43,23 @@ def calculate_delta_max(bounds, dim, device=None, dtype=None):
     return torch.sqrt(torch.sum(delta ** 2)).item()
 
 class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
+                 
+    def __init__(self, use_swarm_size_heuristic=True, *args, **kwargs):
+
+        if use_swarm_size_heuristic:
+            self.sol_shape = kwargs.get('sol_shape')
+            self.dimensions = self.sol_shape[0]
+            self.swarm_size = math.floor(10 + 2*math.sqrt(self.dimensions)) 
+
+            super().__init__(swarm_size=self.swarm_size, *args, **kwargs)
+            print("SWARM_SIZE:", self.swarm_size)    
+
+        else:
+            super().__init__(*args, **kwargs)
+
         self.delta_max = self._calculate_delta_max(self.bounds)
         self.frbs = Frbs(self.delta_max, verbose=self.verbose)
 
-        # N = self.swarm_size
-        # self.swarm_size = math.floor(10 + 2*math.sqrt(self.dimensions)) 
-        # TODO: this is being computed twice in initialization...should probably fix but not the biggest problem atm
         self._init_swarm()
         self._init_vel()
 
