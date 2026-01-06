@@ -221,7 +221,6 @@ class LotkaVolterra(Function):
             else gt[:, 0, :] 
         )
 
-        print("GROUND TRUTH:", self.ground_truth)
         self.real_params = (
             real_params if real_params is not None
             else TRUE_PARAMS[self.name]
@@ -230,7 +229,6 @@ class LotkaVolterra(Function):
         self.t = torch.linspace(0, 100, 100)
         # self.initial_conditions = self.ground_truth[0].unsqueeze(0)
         self.initial_conditions = self.ground_truth[0]
-        print("SHAPE OF INITIAL CONDITION:", self.initial_conditions)
 
     def evaluate(self, params):
         return lotka_volterra_fitness(
