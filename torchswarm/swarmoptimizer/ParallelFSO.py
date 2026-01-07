@@ -2,6 +2,7 @@ import torch
 import math
 from torchswarm.swarmoptimizer.ParallelSO import ParallelSwarmOptimizer
 from FRBS import Frbs
+from debug_utils import _vprint
 
 def calculate_delta_max(bounds, dim, device=None, dtype=None):
     """
@@ -52,7 +53,7 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
             self.swarm_size = math.floor(10 + 2*math.sqrt(self.dimensions)) 
 
             super().__init__(swarm_size=self.swarm_size, *args, **kwargs)
-            print("SWARM_SIZE:", self.swarm_size)    
+            _vprint(self.verbose, "ADAPTIVE SWARM_SIZE:", self.swarm_size)    
 
         else:
             super().__init__(*args, **kwargs)
@@ -64,16 +65,20 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
         self._init_vel()
 
         device = self.swarm.device
-
+        self.max_vel_clamp = 0.2
+        self.min_vel_clamp = 0.1
         # Per-particle adaptive hyperparameters
         self.w     = torch.full((self.swarm_size,), self.inertia, device=device)
         self.c_soc = torch.full((self.swarm_size,), self.social, device=device)
         self.c_cog = torch.full((self.swarm_size,), self.cognitive, device=device)
+        self.U = torch.full((self.swarm_size,), self.max_vel_clamp, device=device)
+        self.L = torch.full((self.swarm_size,), self.min_vel_clamp, device=device)
         
         self.prev_swarm = None
         self.prev_local_best_values = None
         self.f_triangle = torch.tensor(float("inf"), device=device)
-
+        
+        self.apply_clamp_velocities = True 
     def _calculate_delta_max(self, bounds):
         return calculate_delta_max(self.bounds, self.dimensions, device=self.device, dtype=torch.float32)
         # return math.sqrt(self.dimensions * (bounds[1] - bounds[0])**2)
@@ -110,7 +115,9 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
             self.w[i]     = new_params["Inertia"]
             self.c_soc[i] = new_params["Social"]
             self.c_cog[i] = new_params["Cognitive"]
-            # TODO: add other 2 values
+            self.U[i] = new_params["U"]
+            self.L[i] = new_params["L"]
+
         self.prev_swarm = self.swarm.clone()
         self.prev_local_best_values = self.local_best_values.clone()
 

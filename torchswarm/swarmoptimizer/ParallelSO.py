@@ -5,57 +5,7 @@ import torch
 import copy
 import math
 
-from cli import get_args
-
-args = get_args()
-
-VERBOSE = args.verbose
-MODEL = args.model
-NRUNS = args.nruns
-NITER = args.niter
-
-# ---------------------------------------------------------
-# Logging Setup
-# ---------------------------------------------------------
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-summary_file = "summary_results.txt"
-model_file = "std_results.txt" if MODEL == "std" else "fuzzy_results.txt"
-
-# Clear previous logs
-open(summary_file, "w").close()
-open(model_file, "w").close()
-
-def log(msg):
-    print(msg)
-    with open(summary_file, "a") as f:
-        f.write(msg + "\n")
-    with open(model_file, "a") as f:
-        f.write(msg + "\n")
-
-class Function:
-    def __init__(self):
-        self.dimensions = None
-        self.bounds = None
-    def evaluate(self, pos):
-        raise NotImplementedError
-BOUNDS = {
-    "Ackley":       (-30, 30),
-    }
-
-class Ackley(Function):
-    def __init__(self):
-        self.bounds = BOUNDS[self.__class__.__name__]
-    def evaluate(self, swarm):
-        # swarm: (N, D, C)  (C may be 1)
-        # reduce over D and C -> output (N,)
-        dims = tuple(range(1, swarm.ndim))  # (1,2) for (N,D,C)
-
-        mean_sq = torch.mean(swarm**2, dim=dims)                      # (N,)
-        mean_cos = torch.mean(torch.cos(2 * torch.pi * swarm), dim=dims)  # (N,)
-
-        term1 = -20 * torch.exp(-0.2 * torch.sqrt(mean_sq))
-        term2 = -torch.exp(mean_cos)
-        return term1 + term2 + 20 + torch.e                           # (N,)
+from debug_utils import _vprint
 
 def normalize_bounds(bounds, dim, device=None, dtype=None):
     """
@@ -138,7 +88,6 @@ def clamp_with_bounds(swarm, bounds):
             torch.min(swarm, upper),
             lower
         )
-
 def _normalize_bounds(bounds, dim=None, device=None, dtype=torch.float32):
     """
     Normalize bounds into (lower, upper, keys).
@@ -198,33 +147,6 @@ def _normalize_bounds(bounds, dim=None, device=None, dtype=torch.float32):
     return lower, upper, keys
 
 class ParallelSwarmOptimizer:
-    # def init_swarm(self, bounds, swarm_size, dim=None, classes=None, device=None, dtype=torch.float32):
-    #     """
-    #     Initialize swarm positions with flexible bounds.
-
-    #     bounds: tuple OR dict[str, tuple]
-    #     N: number of particles
-    #     dim: required only if bounds is tuple
-
-    #     returns:
-    #         params: (N, D)
-    #         keys: list[str]
-    #     """
-
-    #     lower, upper, keys = _normalize_bounds(
-    #         bounds=bounds,
-    #         dim=dim,
-    #         device=device,
-    #         dtype=dtype
-    #     )
-
-    #     D = lower.numel()
-    #     C =  classes 
-    #     self.swarm = lower + torch.rand((swarm_size, D, C), device=device, dtype=dtype) * (upper - lower)
-
-    #     assert self.swarm.shape == (swarm_size, D, C), f"AssertionError: swarm should be of shape {swarm_size, D, C} but is {self.swarm.shape}"
-
-    #     return 
     def init_swarm(self,
         bounds,
         swarm_size: int,
@@ -334,7 +256,8 @@ class ParallelSwarmOptimizer:
         first_fitness = self.fitness_function.evaluate(self.swarm)
         self.global_best_value = torch.min(first_fitness) 
         self.global_best_position = self.swarm[torch.argmin(first_fitness)] 
-
+        
+        self.apply_clamp_velocities = False
         print(f"Initialized {self.name} object.")
     
     def optimize(self, function):
@@ -348,6 +271,90 @@ class ParallelSwarmOptimizer:
         return
 
     # NB: it's normal that PSO is slower to convergence with the same number of iterations: it's due to the parallel implementation happening synchronously.  
+    def clamp_velocities(self):
+        """
+        Clamp swarm velocities tensor using bounds.
+
+        swarm_velocities:
+            (N, D) or (N, D, C)
+
+        bounds:
+            typically per-dimension (D,) from normalize_bounds(...)
+        """
+        v = self.swarm_velocities
+        assert v.ndim in (2, 3), f"swarm_velocities must be 2D or 3D, got {v.shape}"
+
+        device, dtype = v.device, v.dtype
+        D = v.shape[1]
+
+        lower, upper = normalize_bounds(self.bounds, D, device, dtype)  # expected (D,) or scalar
+
+        if v.ndim == 2:
+            # (N, D): rely on broadcasting of (D,)
+            return torch.clamp(v, min=lower, max=upper)
+
+        # (N, D, C)
+        lower = lower.view(1, D, 1)   # per-dimension bounds
+        upper = upper.view(1, D, 1)
+
+        # Ensure L/U broadcast correctly.
+        # - if scalars: ok
+        # - if per-particle: must be (N,1,1)
+        if isinstance(self.L, torch.Tensor) and self.L.ndim == 3 and self.L.shape[0] == 1 and self.L.shape[1] == v.shape[0]:
+            self.L = self.L.transpose(0, 1)  # (1,N,1) -> (N,1,1)
+        if isinstance(self.U, torch.Tensor) and self.U.ndim == 3 and self.U.shape[0] == 1 and self.U.shape[1] == v.shape[0]:
+            self.U = self.U.transpose(0, 1)
+
+        L = self.L.view(-1, 1, 1)   # (N,) -> (N,1,1)
+        U = self.U.view(-1, 1, 1)   # (N,) -> (N,1,1)
+
+        lower = L * lower
+        upper = U * upper
+
+        return torch.clamp(v, min=lower, max=upper)
+
+    # def clamp_velocities(self):
+    #     """
+    #     Clamp swarm velocities tensor using bounds.
+
+    #     swarm:
+    #         (N, D) or (N, D, C)
+
+    #     bounds:
+    #         tuple or dict
+
+    #     returns:
+    #         clamped swarm (same shape)
+    #     """
+
+    #     assert self.swarm_velocities.ndim in (2, 3), \
+    #         f"swarm_velocities must be 2D or 3D, got {swarm_velocities.shape}"
+
+    #     device = self.swarm_velocities.device
+    #     dtype = self.swarm_velocities.dtype
+    #     D = self.swarm_velocities.shape[1]
+    #     C = self.swarm_velocities.shape[2]
+    #     lower, upper = normalize_bounds(self.bounds, D, device, dtype)
+
+    #     if self.swarm_velocities.ndim == 2:
+    #         # (N, D)
+    #         return torch.max(
+    #             torch.min(self.swarm_velocities, upper),
+    #             lower
+    #         )
+
+    #     else:
+    #         # (N, D, C)
+    #         lower = lower.view(1, D, 1)
+    #         upper = upper.view(1, D, 1)
+
+    #         lower = self.L * lower
+    #         upper = self.U * upper
+
+    #         return torch.max(
+    #             torch.min(self.swarm_velocities, upper),
+    #             lower
+    #         )
 
     def run(self, verbosity=True):
         for i in range(self.max_iterations):
@@ -378,12 +385,6 @@ class ParallelSwarmOptimizer:
 
             assert self.local_best_values.shape == torch.Size([ self.swarm_size ]), f"AssertionError: shape should be {(self.swarm_size)} but is {better_local_fitness_idx.shape}"
 
-            # update global best
-            # better_global_fitness_idx =  self.local_best_values < self.global_best_value  
-            # self.global_best_value = torch.min(self.local_best_values[better_global_fitness_idx]) 
-            # global_best_idx = torch.argmax(current_fitness[better_global_fitness_idx])
-            # self.global_best_value = self.swarm[global_best_idx] 
-
             min_val, min_idx = torch.min(self.local_best_values, dim=0)
             assert min_val.ndim == 0, f"gbest fitness must be scalar, got shape {min_val.shape}"
 
@@ -402,20 +403,15 @@ class ParallelSwarmOptimizer:
             assert self.swarm.device == self.local_best_positions.device == self.local_best_values.device, \
                 "swarm and best tensors must be on same device"
             
-            ## serial form
-            # self.swarm_velocities = (
-            #     self.inertia * self.swarm_velocities
-            #     + r1 * self.cognitive * (self.local_best_positions - self.swarm)
-            #     + r2 * self.social * (self.global_best_position - self.swarm)
-            # )
-
-
             ## vectorized form
             self.swarm_velocities = (
                 self.w[:, None, None] * self.swarm_velocities
                 + r1 * self.c_cog[:, None, None] * (self.local_best_positions - self.swarm)
                 + r2 * self.c_soc[:, None, None] * (self.global_best_position - self.swarm)
             )
+            if self.apply_clamp_velocities:
+                self.clamp_velocities()
+                _vprint(self.verbose, "All velocities were successfully clamped!")
 
             ## possible extension: also clamp max velocities
             # self.swarm = torch.clamp(self.swarm, self.bounds[0], self.bounds[1])
@@ -436,63 +432,3 @@ class ParallelSwarmOptimizer:
         print("Done")
 
         return best_val, best_pos
-
-def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args=args):
-    if name is None:
-        name = func_class.__name__
-
-    header = f"{'='*80}\nTesting function: {name} (Solution shape={sol_shape}) using model={MODEL}\n{'='*80}"
-    args = f"{'='*80}\nARGS == {args}:\n{'='*80}"
-    log(header)
-    log(args)
-
-    ABF = 0 
-    for run in range(1, NRUNS + 1):
-        log(f"\n--- RUN {run}/{NRUNS} ---")
-
-        # choose optimizer
-        if MODEL == "std":
-            opt = ParallelSwarmOptimizer(
-                sol_shape,
-                swarm_size=100,
-                fitness_function = func_class(),
-                max_iterations=NITER,
-                verbose=VERBOSE,
-            )
-        elif MODEL == "fuzzy": 
-            opt = FuzzySwarmOptimizer(
-                sol_shape,
-                max_iterations=NITER,
-            )
-        else:
-            print("Unrecognized model passed!")
-            raise ValueError
-
-
-        opt.optimize(func_class())
-        best_val, best_pos = opt.run(verbosity=VERBOSE)
-         
-        # accumulate for average
-        ABF += best_val.item()
-
-        best_pos = best_pos.tolist() if hasattr(best_pos, 'tolist') else list(best_pos)
-
-        # log to text files
-        log(f"Best fitness in run {run}: {best_val}")
-        log(f"Best position: {best_pos}")
-
-        # save_csv(name, run, best_val, best_pos)
-
-    ABF /= NRUNS
-
-
-    log(f"{'-'*80}\nFinished {name}. Average Best Value: {ABF}\n{'-'*80}")
-    # build_master_table(filename)
-    print(f"FInal results saved at {filename}.") 
-
-def main():
-    benchmark_shape = torch.Size([5, 1])
-    run_test(Ackley, sol_shape=benchmark_shape, args=args)
-
-if __name__=="__main__":
-    main()
