@@ -83,6 +83,7 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
         return calculate_delta_max(self.bounds, self.dimensions, device=self.device, dtype=torch.float32)
         # return math.sqrt(self.dimensions * (bounds[1] - bounds[0])**2)
 
+    #TODO: fix and actually vectorize!!
     def compute_delta(self, i):
         diff = self.swarm[i] - self.prev_swarm[i]
         return torch.norm(diff)

@@ -2,6 +2,7 @@ from consts import TRUE_OPTIMA, RESULTS_DIR
 import os
 import csv
 import torch
+from datetime import datetime
 
 def _vprint(verbose: bool, *args, **kwargs) -> None:
     """Print only if verbose is True."""
@@ -120,3 +121,48 @@ def build_master_table(output_filename, path=RESULTS_DIR):
                             last[2],  # true_value
                             last[3],  # error
                         ])
+# ============================================================
+# Results-dir aware text logging
+# ============================================================
+
+def ensure_results_dir(path=RESULTS_DIR) -> str:
+    """Create results directory if missing and return its path."""
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def make_run_prefix(model: str, nruns: int, niter: int, mode: str) -> str:
+    """Stable prefix used by both text logs and other artifacts."""
+    return f"{model}_{nruns}_{niter}_{mode}"
+
+
+def get_logger(model: str, nruns: int, niter: int, mode: str, *, path=RESULTS_DIR, timestamp: str | None = None):
+    """
+    Returns:
+      - log(msg): prints + appends to both summary + model-specific file
+      - summary_path
+      - model_path
+
+    All logs go into RESULTS_DIR.
+    """
+    ensure_results_dir(path)
+
+    ts = timestamp or datetime.now().strftime("%Y%m%d_%H%M%S")
+    prefix = make_run_prefix(model, nruns, niter, mode)
+
+    summary_path = os.path.join(path, f"summary_{prefix}_{ts}.txt")
+    model_path   = os.path.join(path, f"log_{prefix}_{ts}.txt")
+
+    # start fresh for this run
+    open(summary_path, "w").close()
+    open(model_path, "w").close()
+
+    def log(msg: str):
+        print(msg)
+        with open(summary_path, "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
+        with open(model_path, "a", encoding="utf-8") as f:
+            f.write(msg + "\n")
+
+    return log, summary_path, model_path
+

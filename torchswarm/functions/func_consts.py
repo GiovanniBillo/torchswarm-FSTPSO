@@ -3,7 +3,7 @@ import numpy as np
 
 from torchswarm.data.data_utils import get_bounds
 
-NPZ_PATH = "torchswarm/data/all_reflectances.npz"
+NPZ_PATH = "data/all_reflectances.npz"
 # NPZ_PATH = 'torchswarm/data/esa_oc_412_valid_samples.npz'
 
 # -----------------------------
