@@ -3,7 +3,7 @@ import torch
 import os
 from datetime import datetime
 import csv
-
+from consts import RESULTS_DIR
 print("Torch version:", torch.__version__)
 print("Built with CUDA:", torch.version.cuda)
 
@@ -15,7 +15,7 @@ from torchswarm.swarmoptimizer.ParallelFSO import ParallelFuzzySwarmOptimizer
 from consts import TRUE_OPTIMA
 from cli import get_args
 
-from debug_utils import save_csv, build_master_table # not really debug utils but whatever
+from debug_utils import save_csv, build_master_table, get_logger
 
 args = get_args()
 VERBOSE = args.verbose
@@ -24,34 +24,25 @@ NRUNS = args.nruns
 NITER = args.niter
 MODE = args.mode
 
-# ---------------------------------------------------------
-# Logging Setup
-# ---------------------------------------------------------
-timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-summary_file = "summary_results.txt"
-# model_file = f"{MODEL}_{NRUNS}_{NITER}_{MODE}.txt" if MODEL == "std" else "fuzzy_results.txt"
+log, summary_path, model_path = get_logger(
+    model=MODEL,
+    nruns=NRUNS,
+    niter=NITER,
+    mode=MODE,
+    path=RESULTS_DIR,
+)
 
-model_file = f"{MODEL}_{NRUNS}_{NITER}_{MODE}.txt" 
-
-# Clear previous logs
-open(summary_file, "w").close()
-open(model_file, "w").close()
-
-def log(msg):
-    print(msg)
-    with open(summary_file, "a") as f:
-        f.write(msg + "\n")
-    with open(model_file, "a") as f:
-        f.write(msg + "\n")
+log(f"Logging to:\n- {summary_path}\n- {model_path}")
 
 def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args=args):
     if name is None:
         name = func_class.__name__
 
     header = f"{'='*80}\nTesting function: {name} (Solution shape={sol_shape}) using model={MODEL}\n{'='*80}"
-    args = f"{'='*80}\nARGS == {args}:\n{'='*80}"
+
+    args_block = f"{'='*80}\nARGS == {args}:\n{'='*80}"
     log(header)
-    log(args)
+    log(args_block)
 
     ABF = 0 # average best fitness
     ABP = torch.zeros(sol_shape) # average best position
@@ -126,6 +117,7 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
 
 
     log(f"{'-'*80}\nFinished {name}. Average Best Value: {ABF}\n{'-'*80} Average Best Position: {ABP}\n{'-'*80}")
+    # if hasattr(func_class, real_params):
+    #     log(f"REAL SOLUTION:{func_class().real_params}")
     build_master_table(filename)
-    print(f"FInal results saved at {filename}.") 
-
+    print(f"Final results saved at {os.path.join(RESULTS_DIR, filename)}.")

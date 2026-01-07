@@ -110,7 +110,7 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
             self.w[i]     = new_params["Inertia"]
             self.c_soc[i] = new_params["Social"]
             self.c_cog[i] = new_params["Cognitive"]
-
+            # TODO: add other 2 values
         self.prev_swarm = self.swarm.clone()
         self.prev_local_best_values = self.local_best_values.clone()
 
