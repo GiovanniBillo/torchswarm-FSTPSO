@@ -4,11 +4,11 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name='torchswarm',
+    name='torchpso',
     version='0.0.1',    
-    description='A fast implementation of Particle Swarm Optimization using PyTorch',
-    url='https://github.com/rohanmohapatra/torchswarm',
-    author='Rohan Mohapatra',
+    description='A fast implementation of Particle Swarm Optimization & variants using PyTorch, with a framework for inverse problems',
+    url='https://github.com/GiovanniBillo/torchswarm-FSTPSO',
+    author='Giovanni Billo',
     license='MIT',
     install_requires=['torch'],
     long_description=long_description,

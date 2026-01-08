@@ -12,3 +12,5 @@
 # Large datasets
 *.npz
 *.nc
+*.txt
+results/
