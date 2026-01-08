@@ -63,6 +63,15 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
 
         self._init_swarm()
         self._init_vel()
+    
+
+        # make delta max a tensor
+        self.delta_max = torch.full(
+            (self.swarm_size,),
+            self.delta_max,
+            dtype=torch.float32,
+            device=self.swarm.device  # or wherever your swarm lives
+        )
 
         device = self.swarm.device
         self.max_vel_clamp = 0.2
@@ -81,18 +90,16 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
         self.apply_clamp_velocities = True 
     def _calculate_delta_max(self, bounds):
         return calculate_delta_max(self.bounds, self.dimensions, device=self.device, dtype=torch.float32)
-        # return math.sqrt(self.dimensions * (bounds[1] - bounds[0])**2)
 
-    #TODO: fix and actually vectorize!!
-    def compute_delta(self, i):
-        diff = self.swarm[i] - self.prev_swarm[i]
-        return torch.norm(diff)
+    def compute_delta(self):
+        diff = self.swarm - self.prev_swarm
+        return torch.norm(diff, dim=1).squeeze()
 
-    def compute_phi(self, i):
-        delta = self.compute_delta(i)
+    def compute_phi(self):
+        delta = self.compute_delta()
 
-        f_curr = self.local_best_values[i]
-        f_prev = self.prev_local_best_values[i]
+        f_curr = self.local_best_values
+        f_prev = self.prev_local_best_values
         ftri   = torch.maximum(self.f_triangle, torch.tensor(1e-6))
 
         phi = (delta / self.delta_max) * ((f_curr - f_prev) / torch.abs(ftri))
@@ -105,19 +112,18 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
             self.f_triangle = torch.max(self.local_best_values)
             return
 
-        for i in range(self.swarm_size):
-            delta = self.compute_delta(i)
-            phi = self.compute_phi(i)
+        # delta: (N,), phi: (N,)
+        delta = self.compute_delta()   # or however you named it
+        phi = self.compute_phi()       # (N,)
 
-            delta_m, phi_m = self.frbs.compute_memberships(delta, phi)
-            rules = self.frbs.define_rules(delta_m, phi_m)
-            new_params = self.frbs.sugeno(rules)
+        new_params = self.frbs.forward(delta, phi)  # dict of (N,)
 
-            self.w[i]     = new_params["Inertia"]
-            self.c_soc[i] = new_params["Social"]
-            self.c_cog[i] = new_params["Cognitive"]
-            self.U[i] = new_params["U"]
-            self.L[i] = new_params["L"]
+        self.w     = new_params["Inertia"]
+        self.c_soc = new_params["Social"]
+        self.c_cog = new_params["Cognitive"]
+        # If you use L,U elsewhere:
+        self.L     = new_params["L"]
+        self.U     = new_params["U"]
 
         self.prev_swarm = self.swarm.clone()
         self.prev_local_best_values = self.local_best_values.clone()

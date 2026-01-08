@@ -231,10 +231,6 @@ class ParallelSwarmOptimizer:
         self.swarm = None
         self.swarm_velocities = None
 
-        # self.swarm = torch.empty(
-        #     (self.swarm_size, self.dimensions, self.classes), device=device
-        # ).uniform_(self.bounds[0], self.bounds[1])
-
         self._init_swarm()
         self._init_vel() 
 
@@ -313,49 +309,6 @@ class ParallelSwarmOptimizer:
 
         return torch.clamp(v, min=lower, max=upper)
 
-    # def clamp_velocities(self):
-    #     """
-    #     Clamp swarm velocities tensor using bounds.
-
-    #     swarm:
-    #         (N, D) or (N, D, C)
-
-    #     bounds:
-    #         tuple or dict
-
-    #     returns:
-    #         clamped swarm (same shape)
-    #     """
-
-    #     assert self.swarm_velocities.ndim in (2, 3), \
-    #         f"swarm_velocities must be 2D or 3D, got {swarm_velocities.shape}"
-
-    #     device = self.swarm_velocities.device
-    #     dtype = self.swarm_velocities.dtype
-    #     D = self.swarm_velocities.shape[1]
-    #     C = self.swarm_velocities.shape[2]
-    #     lower, upper = normalize_bounds(self.bounds, D, device, dtype)
-
-    #     if self.swarm_velocities.ndim == 2:
-    #         # (N, D)
-    #         return torch.max(
-    #             torch.min(self.swarm_velocities, upper),
-    #             lower
-    #         )
-
-    #     else:
-    #         # (N, D, C)
-    #         lower = lower.view(1, D, 1)
-    #         upper = upper.view(1, D, 1)
-
-    #         lower = self.L * lower
-    #         upper = self.U * upper
-
-    #         return torch.max(
-    #             torch.min(self.swarm_velocities, upper),
-    #             lower
-    #         )
-
     def run(self, verbosity=True):
         for i in range(self.max_iterations):
             tic = time.monotonic()
@@ -413,15 +366,11 @@ class ParallelSwarmOptimizer:
                 self.clamp_velocities()
                 _vprint(self.verbose, "All velocities were successfully clamped!")
 
-            ## possible extension: also clamp max velocities
-            # self.swarm = torch.clamp(self.swarm, self.bounds[0], self.bounds[1])
-
             # move
             self.swarm = self.swarm + self.swarm_velocities
-            # self.swarm = torch.clamp(self.swarm, self.bounds[0], self.bounds[1])
             self.swarm = clamp_with_bounds(self.swarm, self.bounds) 
 
-            # hyperparameter update(static for Standard Swarm Optimizer, useful for subclasses)
+            # hyperparameter update(useful for subclasses)
             self.update_hyperparameters(i)
 
             toc = time.monotonic()

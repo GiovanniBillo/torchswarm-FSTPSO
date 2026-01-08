@@ -150,7 +150,7 @@ PROBLEM_BOUNDS["OCx"] = {
 }
 
 TRUE_PARAMS = {
-    "LotkaVolterra": torch.tensor([[0.1, 0.02], [0.01, 0.1]], dtype=torch.float32).unsqueeze(0),
+    "LotkaVolterra": torch.tensor([0.1, 0.02, 0.01, 0.1], dtype=torch.float32).unsqueeze(0),
     "Reflectance": torch.tensor([]),
 }
 
