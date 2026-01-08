@@ -27,10 +27,8 @@ The final experiment addresses a simplified inverse problem inspired by **ocean-
 OCx algorithms estimate chlorophyll-a concentration (`chlor_a`) as a polynomial function of the logarithm of a ratio of **remote sensing reflectances (Rrs)** measured at different wavelengths:
 
 $$
-\log_{10}(\mathrm{chlor}_a)
-=
-a_0 + a_1 R + a_2 R^2 + a_3 R^3 + a_4 R^4
-$$
+log_{10}(chlor_a) = a_0 + a_1 R + a_2 R^2 + a_3 R^3 + a_4 R^4 
+$$ 
 
 where
 
