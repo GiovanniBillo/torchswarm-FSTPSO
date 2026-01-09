@@ -1,5 +1,18 @@
 ## FST-PSO in Pytorch
 
+This project has multiple aims:
+- provide a fast pytorch implementation of the Particle Swarm Optimization algorithm. 
+- implement a Self-Tuning version of the algorithm which leverages fuzzy logic for hyperparameter tuning, after [Nobile et al.](https://www.sciencedirect.com/science/article/abs/pii/S2210650216303534)
+- provide a template for the solution of inverse problems with PSO-like algorithms.   
+
+The repository is organized as follows:
+- `torchswarm`: contains all the source code for the algorithm's implementation. While the initial layout was inspired by [rohanmopatra](https://github.com/rohanmohapatra/torchswarm), the final product differs significantly from this starting point. In here, the core functionalities of the algorithms are contained in the 'ParallelSO.py' and 'ParallelFSO.py'
+- 'data': contains external data needed for one of the experiments  
+- in the main folder, different files are contained:
+    - `tests.py`, `lv.py`, `inverse_ocx.py` all contain brief code to launch experiments with different problems
+    - `cli.py` contains all command line arguments.
+    - `FRBS.py` contains all the logic of the Fuzzy Rule-Based System. 
+
 To run a test with different benchmark problems (e.g Ackley, Rastrigin, Griewank...), after activating the environment and from the main directory:
 ```
 python3 tests.py
