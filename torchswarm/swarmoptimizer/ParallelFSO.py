@@ -95,6 +95,10 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
         diff = self.swarm - self.prev_swarm
         return torch.norm(diff, dim=1).squeeze()
 
+    # def compute_delta(self, s1, s2):
+    #     diff = s1 - s2 
+    #     return torch.norm(diff, dim=1).squeeze()
+
     def compute_phi(self):
         delta = self.compute_delta()
 
@@ -105,6 +109,16 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
         phi = (delta / self.delta_max) * ((f_curr - f_prev) / torch.abs(ftri))
         return torch.clamp(phi, -1.0, 1.0)
 
+    # def compute_phi(self):
+    #     delta = self.compute_delta(self.swarm, self.prev_swarm)
+
+    #     f_curr = self.local_best_values
+    #     f_prev = self.prev_local_best_values
+    #     ftri   = torch.maximum(self.f_triangle, torch.tensor(1e-6))
+
+    #     phi = (delta / self.delta_max) * ((f_curr - f_prev) / torch.abs(ftri))
+    #     return torch.clamp(phi, -1.0, 1.0)
+
     def update_hyperparameters(self, iteration):
         if iteration == 0:
             self.prev_swarm = self.swarm.clone()
@@ -113,7 +127,8 @@ class ParallelFuzzySwarmOptimizer(ParallelSwarmOptimizer):
             return
 
         # delta: (N,), phi: (N,)
-        delta = self.compute_delta()   # or however you named it
+        # delta = self.compute_delta(self.swarm, self.local_best_positions)   # or however you named it
+        delta = self.compute_delta()   
         phi = self.compute_phi()       # (N,)
 
         new_params = self.frbs.forward(delta, phi)  # dict of (N,)

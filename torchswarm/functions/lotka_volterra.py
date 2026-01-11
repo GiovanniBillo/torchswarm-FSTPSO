@@ -146,6 +146,11 @@ def solve_lotka_volterra(params, y0, t):
 
     assert y0.shape == (N, 2), \
         f"y0 must be normalized to (N,2), got {y0.shape}"
+    device = params.device
+    dtype = params.dtype
+
+    t = t.to(device=device, dtype=dtype)
+    y0 = y0.to(device=device, dtype=dtype)
 
     ode_func = LotkaVolterraODE(params)
     sol = odeint(ode_func, y0, t)
@@ -184,12 +189,17 @@ def lotka_volterra_fitness(params, y0, t, ground_truth):
 # ============================================================
 # Ground truth generation (torch)
 # ============================================================
+with torch.no_grad():
+    t = torch.linspace(0, 100, 100, device="cpu")
+    initial_conditions = torch.tensor([30.0, 10.0], device="cpu")
+    solution = solve_lotka_volterra(TRUE_PARAMS["LotkaVolterra"].cpu(), initial_conditions, t).cpu()
+    REAL_SOLUTIONS = {"LotkaVolterra": solution}
 
-t = torch.linspace(0, 100, 100)
-initial_conditions = torch.tensor([30.0, 10.0])
+# t = torch.linspace(0, 100, 100)
+# initial_conditions = torch.tensor([30.0, 10.0])
 
-solution = solve_lotka_volterra(TRUE_PARAMS["LotkaVolterra"], initial_conditions, t)
-REAL_SOLUTIONS = {"LotkaVolterra": solution}
+# solution = solve_lotka_volterra(TRUE_PARAMS["LotkaVolterra"], initial_conditions, t)
+# REAL_SOLUTIONS = {"LotkaVolterra": solution}
 
 
 # ============================================================
@@ -279,10 +289,11 @@ class LotkaVolterra(Function):
         params: (N,4,1) or (N,4)
         returns: (N,)
         """
+        device = params.device
+        dtype = params.dtype
         return lotka_volterra_fitness(
             params=params,
-            y0=self.initial_conditions,
-            t=self.t,
-            ground_truth=self.ground_truth
+            y0=self.initial_conditions.to(device=device, dtype=dtype),
+            t=self.t.to(device=device, dtype=dtype),
+            ground_truth=self.ground_truth.to(device=device, dtype=dtype),
         )
-

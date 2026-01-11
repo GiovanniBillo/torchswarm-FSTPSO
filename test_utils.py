@@ -23,7 +23,7 @@ MODEL = args.model
 NRUNS = args.nruns
 NITER = args.niter
 MODE = args.mode
-
+SEED = args.seed
 log, summary_path, model_path = get_logger(
     model=MODEL,
     nruns=NRUNS,
@@ -47,7 +47,8 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
     ABF = 0 # average best fitness
     ABP = torch.zeros(sol_shape) # average best position
     for run in range(1, NRUNS + 1):
-        log(f"\n--- RUN {run}/{NRUNS} ---")
+        current_seed = SEED + run
+        log(f"\n--- RUN {run}/{NRUNS} with SEED:{current_seed} ---")
         if MODE == "serial": 
             # choose optimizer
             if MODEL == "std":
@@ -84,6 +85,7 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
                     fitness_function = func_class(),
                     max_iterations=NITER,
                     verbose=VERBOSE,
+                    seed=current_seed
                 )
             elif MODEL == "fuzzy": 
                 opt = ParallelFuzzySwarmOptimizer(
@@ -92,6 +94,7 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
                     fitness_function = func_class(),
                     max_iterations=NITER,
                     verbose=VERBOSE,
+                    seed=current_seed
                 )
             else:
                 print("Unrecognized model passed!")
@@ -102,7 +105,7 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
         
         # accumulate for average
         ABF += best_val
-        ABP += best_pos 
+        ABP += best_pos.detach().cpu() 
 
         best_pos = best_pos.tolist() if hasattr(best_pos, 'tolist') else list(best_pos)
 
@@ -111,11 +114,12 @@ def run_test(func_class, sol_shape, name=None, filename="master_table.csv", args
         log(f"Best fitness in run {run}: {best_val}")
         log(f"Best position: {best_pos}")
 
-        save_csv(name, run, best_val, best_pos)
+        save_csv(name, run, MODEL, best_val, best_pos, current_seed)
 
     ABF /= NRUNS
-
-
+    ABP /= NRUNS
+    run="avg"
+    save_csv(name, run, MODEL, ABF, ABP, current_seed)
     log(f"{'-'*80}\nFinished {name}. Average Best Value: {ABF}\n{'-'*80} Average Best Position: {ABP}\n{'-'*80}")
     # if hasattr(func_class, real_params):
     #     log(f"REAL SOLUTION:{func_class().real_params}")

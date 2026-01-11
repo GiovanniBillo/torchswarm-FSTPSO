@@ -1,3 +1,4 @@
+from __future__ import annotations
 from consts import TRUE_OPTIMA, RESULTS_DIR
 import os
 import csv
@@ -67,7 +68,7 @@ class ParticleStateTracker:
 
             print("prev_params:", self.prev_params)
 
-def save_csv(func_name, run_id, best_val, best_pos, path=RESULTS_DIR):
+def save_csv(func_name, run_id, model, best_val, best_pos, seed, path=RESULTS_DIR):
     """
     Save benchmark results to a CSV file.
     Automatically creates the directory if it does not exist.
@@ -76,20 +77,21 @@ def save_csv(func_name, run_id, best_val, best_pos, path=RESULTS_DIR):
     os.makedirs(path, exist_ok=True)
 
     true_val = TRUE_OPTIMA.get(func_name, float('nan'))
-    filepath = os.path.join(path, f"results_{func_name.lower()}.csv")
+    filepath = os.path.join(path, f"results_{model}_{func_name.lower()}.csv")
 
     file_exists = os.path.isfile(filepath)
 
     with open(filepath, "a", newline="") as f:
         writer = csv.writer(f)
         if not file_exists:
-            writer.writerow(["run", "best_found", "true_value", "error", "best_position"])
+            writer.writerow(["run", "best_found", "true_value", "error", "best_position", "seed"])
         writer.writerow([
             run_id,
             best_val,
             true_val,
             best_val - true_val,
-            best_pos
+            best_pos, 
+            seed
         ])
 
 

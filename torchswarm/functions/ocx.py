@@ -187,7 +187,7 @@ class OCxChlorophyll(Function):
 
     def evaluate(self, params):
         """
-        params: (N,5,1) (or (N,5) if your PSO uses that)
+        params: (N,5,1) 
         returns: fitness (N,)
         """
         assert isinstance(params, torch.Tensor), "params must be torch.Tensor"
